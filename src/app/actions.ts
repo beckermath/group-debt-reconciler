@@ -1,8 +1,8 @@
 "use server";
 
 import { db } from "@/db";
-import { groups, groupMembers, groupInvites, members, users, expenses, expenseSplits } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { groups, groupMembers, groupInvites, members, users, expenses, expenseSplits, settlements } from "@/db/schema";
+import { eq, and, desc } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { redirect } from "next/navigation";
 import { requireAuth, requireGroupAccess, requireGroupOwner } from "@/lib/auth-helpers";
@@ -219,6 +219,7 @@ export async function deleteGroup(formData: FormData) {
     await db.delete(expenseSplits).where(eq(expenseSplits.expenseId, expense.id));
   }
   await db.delete(expenses).where(eq(expenses.groupId, groupId));
+  await db.delete(settlements).where(eq(settlements.groupId, groupId));
   await db.delete(members).where(eq(members.groupId, groupId));
   await db.delete(groupMembers).where(eq(groupMembers.groupId, groupId));
   await db.delete(groups).where(eq(groups.id, groupId));
@@ -311,4 +312,41 @@ export async function acceptInvite(code: string) {
     .where(eq(groupInvites.id, invite.id));
 
   redirect(`/group/${invite.groupId}`);
+}
+
+export async function settleUp(formData: FormData) {
+  const groupId = formData.get("groupId") as string;
+  if (!groupId) return;
+
+  const { userId } = await requireGroupOwner(groupId);
+
+  await db.insert(settlements).values({
+    id: randomUUID(),
+    groupId,
+    settledBy: userId,
+    settledAt: new Date(),
+  });
+
+  redirect(`/group/${groupId}`);
+}
+
+export async function undoSettlement(formData: FormData) {
+  const groupId = formData.get("groupId") as string;
+  const settlementId = formData.get("settlementId") as string;
+  if (!groupId || !settlementId) return;
+
+  await requireGroupOwner(groupId);
+
+  // Only allow undoing the most recent settlement
+  const [latest] = await db
+    .select()
+    .from(settlements)
+    .where(eq(settlements.groupId, groupId))
+    .orderBy(desc(settlements.settledAt))
+    .limit(1);
+
+  if (!latest || latest.id !== settlementId) return;
+
+  await db.delete(settlements).where(eq(settlements.id, settlementId));
+  redirect(`/group/${groupId}`);
 }

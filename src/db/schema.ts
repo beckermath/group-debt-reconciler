@@ -103,3 +103,15 @@ export const expenseSplits = sqliteTable("expense_splits", {
     .references(() => members.id),
   share: integer("share").notNull(), // cents
 });
+
+export const settlements = sqliteTable("settlements", {
+  id: text("id").primaryKey(),
+  groupId: text("group_id")
+    .notNull()
+    .references(() => groups.id, { onDelete: "cascade" }),
+  settledBy: text("settled_by")
+    .notNull()
+    .references(() => users.id),
+  settledAt: integer("settled_at", { mode: "timestamp" }).notNull(),
+  note: text("note"),
+});

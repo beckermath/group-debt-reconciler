@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import { groups, members, expenses, expenseSplits } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { groups, members, expenses, expenseSplits, settlements, users } from "@/db/schema";
+import { eq, desc, gt } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/submit-button";
@@ -13,6 +13,8 @@ import { RemoveMemberButton } from "@/components/remove-member-button";
 import { DeleteGroupButton } from "@/components/delete-group-button";
 import { InviteButton } from "@/components/invite-button";
 import { EditableGroupName } from "@/components/editable-group-name";
+import { SettleUpButton } from "@/components/settle-up-button";
+import { SettlementHistory } from "@/components/settlement-history";
 import { reconcile } from "@/lib/reconcile";
 import { requireGroupAccess } from "@/lib/auth-helpers";
 import Link from "next/link";
@@ -65,14 +67,24 @@ export default async function GroupPage({
     allMembers.map((m) => [m.id, m.removedAt ? `${m.name} (removed)` : m.name])
   );
 
-  const groupExpenses = await db
+  // Fetch settlements
+  const allSettlements = await db
+    .select()
+    .from(settlements)
+    .where(eq(settlements.groupId, id))
+    .orderBy(desc(settlements.settledAt));
+
+  const lastSettlement = allSettlements[0] ?? null;
+
+  // Fetch ALL expenses for the group
+  const allExpenses = await db
     .select()
     .from(expenses)
     .where(eq(expenses.groupId, id))
     .orderBy(desc(expenses.createdAt));
 
-  const expensesWithSplits = await Promise.all(
-    groupExpenses.map(async (expense) => {
+  const allExpensesWithSplits = await Promise.all(
+    allExpenses.map(async (expense) => {
       const splits = await db
         .select()
         .from(expenseSplits)
@@ -81,13 +93,22 @@ export default async function GroupPage({
     })
   );
 
-  // Compute balances for all members (including removed) for impact calculations
+  // Split into current (after last settlement) and previous
+  const currentExpenses = lastSettlement
+    ? allExpensesWithSplits.filter((e) => e.createdAt > lastSettlement.settledAt)
+    : allExpensesWithSplits;
+
+  const previousExpenses = lastSettlement
+    ? allExpensesWithSplits.filter((e) => e.createdAt <= lastSettlement.settledAt)
+    : [];
+
+  // Compute balances from CURRENT expenses only
   const balances = computeBalances(
-    expensesWithSplits,
+    currentExpenses,
     allMembers.map((m) => m.id)
   );
 
-  // Compute transfers for group deletion dialog
+  // Compute transfers for reconciliation and group deletion
   const transfers = reconcile(balances);
   const hasUnsettledDebts = transfers.length > 0;
   const transfersWithNames = transfers.map((t) => ({
@@ -96,10 +117,44 @@ export default async function GroupPage({
     amount: t.amount,
   }));
 
-  // Compute per-member impact for remove dialog
+  // Build settlement history data
+  const settlementUsers = new Map<string, string>();
+  for (const s of allSettlements) {
+    if (!settlementUsers.has(s.settledBy)) {
+      const [u] = await db.select().from(users).where(eq(users.id, s.settledBy));
+      if (u) settlementUsers.set(s.settledBy, u.name ?? u.email);
+    }
+  }
+
+  const settlementsWithNames = allSettlements.map((s) => ({
+    id: s.id,
+    settledAt: s.settledAt,
+    settledByName: settlementUsers.get(s.settledBy) ?? "Unknown",
+  }));
+
+  // Group previous expenses by settlement period
+  const expensesBySettlement: Record<string, { id: string; description: string; amount: number; paidByName: string; splitCount: number }[]> = {};
+  for (let i = 0; i < allSettlements.length; i++) {
+    const settlement = allSettlements[i];
+    const prevSettlement = allSettlements[i + 1] ?? null;
+    const periodExpenses = previousExpenses.filter((e) => {
+      const afterPrev = prevSettlement ? e.createdAt > prevSettlement.settledAt : true;
+      const beforeCurrent = e.createdAt <= settlement.settledAt;
+      return afterPrev && beforeCurrent;
+    });
+    expensesBySettlement[settlement.id] = periodExpenses.map((e) => ({
+      id: e.id,
+      description: e.description,
+      amount: e.amount,
+      paidByName: memberMap.get(e.paidBy) ?? "Unknown",
+      splitCount: e.splits.length,
+    }));
+  }
+
+  // Compute per-member impact for remove dialog (current expenses only)
   function getMemberImpact(memberId: string) {
-    const expensesPaidCount = groupExpenses.filter((e) => e.paidBy === memberId).length;
-    const expensesSplitCount = expensesWithSplits.filter(
+    const expensesPaidCount = currentExpenses.filter((e) => e.paidBy === memberId).length;
+    const expensesSplitCount = currentExpenses.filter(
       (e) => e.paidBy !== memberId && e.splits.some((s) => s.memberId === memberId)
     ).length;
     return {
@@ -124,7 +179,7 @@ export default async function GroupPage({
               groupId={id}
               groupName={group.name}
               hasUnsettledDebts={hasUnsettledDebts}
-              totalExpenses={groupExpenses.length}
+              totalExpenses={allExpenses.length}
               totalMembers={allMembers.length}
               transfers={transfersWithNames}
             />
@@ -226,53 +281,68 @@ export default async function GroupPage({
         </CardContent>
       </Card>
 
-      {expensesWithSplits.length > 0 && (
-        <>
-          <Card>
-            <CardHeader>
+      {currentExpenses.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
               <CardTitle>Expenses</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="divide-y">
-                {expensesWithSplits.map((expense) => (
-                  <li key={expense.id} className="py-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{expense.description}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {memberMap.get(expense.paidBy) ?? "Unknown"} paid $
-                          {(expense.amount / 100).toFixed(2)} &middot; split{" "}
-                          {expense.splits.length} way
-                          {expense.splits.length !== 1 && "s"}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <EditExpenseButton
-                          expense={expense}
-                          groupId={id}
-                          members={activeMembers}
-                        />
-                        <form action={deleteExpense}>
-                          <input type="hidden" name="id" value={expense.id} />
-                          <input type="hidden" name="groupId" value={id} />
-                          <SubmitButton variant="destructive" size="sm">
-                            Delete
-                          </SubmitButton>
-                        </form>
-                      </div>
+              {lastSettlement && (
+                <span className="text-xs text-muted-foreground">
+                  Since {lastSettlement.settledAt.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                </span>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y">
+              {currentExpenses.map((expense) => (
+                <li key={expense.id} className="py-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{expense.description}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {memberMap.get(expense.paidBy) ?? "Unknown"} paid $
+                        {(expense.amount / 100).toFixed(2)} &middot; split{" "}
+                        {expense.splits.length} way
+                        {expense.splits.length !== 1 && "s"}
+                      </p>
                     </div>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-
-          <ReconciliationCard
-            expensesWithSplits={expensesWithSplits}
-            memberMap={memberMap}
-          />
-        </>
+                    <div className="flex items-center gap-1">
+                      <EditExpenseButton
+                        expense={expense}
+                        groupId={id}
+                        members={activeMembers}
+                      />
+                      <form action={deleteExpense}>
+                        <input type="hidden" name="id" value={expense.id} />
+                        <input type="hidden" name="groupId" value={id} />
+                        <SubmitButton variant="destructive" size="sm">
+                          Delete
+                        </SubmitButton>
+                      </form>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
       )}
+
+      <ReconciliationCard
+        expensesWithSplits={currentExpenses}
+        memberMap={memberMap}
+        isOwner={isOwner}
+        groupId={id}
+        transfers={transfersWithNames}
+      />
+
+      <SettlementHistory
+        groupId={id}
+        settlements={settlementsWithNames}
+        expensesBySettlement={expensesBySettlement}
+        isOwner={isOwner}
+      />
     </div>
   );
 }
@@ -280,6 +350,9 @@ export default async function GroupPage({
 function ReconciliationCard({
   expensesWithSplits,
   memberMap,
+  isOwner,
+  groupId,
+  transfers: transfersWithNames,
 }: {
   expensesWithSplits: {
     id: string;
@@ -288,6 +361,9 @@ function ReconciliationCard({
     splits: { memberId: string; share: number }[];
   }[];
   memberMap: Map<string, string>;
+  isOwner: boolean;
+  groupId: string;
+  transfers: { fromName: string; toName: string; amount: number }[];
 }) {
   const balances = computeBalances(
     expensesWithSplits,
@@ -299,7 +375,12 @@ function ReconciliationCard({
   return (
     <Card className="border-primary/20 bg-primary/[0.02]">
       <CardHeader>
-        <CardTitle>Settle Up</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle>Settle Up</CardTitle>
+          {isOwner && transfers.length > 0 && (
+            <SettleUpButton groupId={groupId} transfers={transfersWithNames} />
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         <div>

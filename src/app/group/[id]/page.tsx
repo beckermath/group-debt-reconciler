@@ -160,7 +160,18 @@ export default async function GroupPage({
                     key={member.id}
                     className="flex items-center justify-between py-2"
                   >
-                    <span>{member.name}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span>{member.name}</span>
+                      {member.userId ? (
+                        <span className="inline-flex items-center rounded-full bg-primary/10 px-1.5 py-0.5 text-[0.65rem] font-medium text-primary">
+                          account
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-muted px-1.5 py-0.5 text-[0.65rem] font-medium text-muted-foreground">
+                          guest
+                        </span>
+                      )}
+                    </div>
                     <RemoveMemberButton
                       member={member}
                       groupId={id}

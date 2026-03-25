@@ -8,6 +8,11 @@ import bcrypt from "bcryptjs";
 import { signIn } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
+function safeCallbackUrl(url: string): string {
+  if (!url || !url.startsWith("/") || url.startsWith("//")) return "/";
+  return url;
+}
+
 export async function register(prevState: unknown, formData: FormData) {
   const name = (formData.get("name") as string)?.trim();
   const email = (formData.get("email") as string)?.trim().toLowerCase();
@@ -53,7 +58,7 @@ export async function register(prevState: unknown, formData: FormData) {
 export async function login(prevState: unknown, formData: FormData) {
   const email = (formData.get("email") as string)?.trim().toLowerCase();
   const password = formData.get("password") as string;
-  const callbackUrl = (formData.get("callbackUrl") as string) || "/";
+  const callbackUrl = safeCallbackUrl((formData.get("callbackUrl") as string) || "/");
 
   if (!email || !password) {
     return { error: "Email and password are required" };

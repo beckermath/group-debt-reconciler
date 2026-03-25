@@ -39,8 +39,15 @@ export async function register(prevState: unknown, formData: FormData) {
     passwordHash,
   });
 
-  await signIn("credentials", { email, password, redirect: false });
-  redirect("/");
+  try {
+    await signIn("credentials", { email, password, redirectTo: "/" });
+  } catch (error) {
+    if ((error as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+      throw error;
+    }
+    // Sign-in after register failed, but account was created — redirect anyway
+    redirect("/login");
+  }
 }
 
 export async function login(prevState: unknown, formData: FormData) {
@@ -52,10 +59,12 @@ export async function login(prevState: unknown, formData: FormData) {
   }
 
   try {
-    await signIn("credentials", { email, password, redirect: false });
-  } catch {
+    await signIn("credentials", { email, password, redirectTo: "/" });
+  } catch (error) {
+    // signIn throws NEXT_REDIRECT on success — let it propagate
+    if ((error as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+      throw error;
+    }
     return { error: "Invalid email or password" };
   }
-
-  redirect("/");
 }

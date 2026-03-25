@@ -9,6 +9,7 @@ import { addMember, deleteExpense, deleteMember, restoreMember } from "@/app/act
 import { ExpenseForm } from "@/components/expense-form";
 import { RemoveMemberButton } from "@/components/remove-member-button";
 import { DeleteGroupButton } from "@/components/delete-group-button";
+import { InviteButton } from "@/components/invite-button";
 import { reconcile } from "@/lib/reconcile";
 import { requireGroupAccess } from "@/lib/auth-helpers";
 import Link from "next/link";
@@ -113,7 +114,9 @@ export default async function GroupPage({
         </Link>
         <div className="flex items-center justify-between mt-1">
           <h1 className="text-2xl font-bold">{group.name}</h1>
-          {isOwner && (
+          <div className="flex items-center gap-2">
+            <InviteButton groupId={id} />
+            {isOwner && (
             <DeleteGroupButton
               groupId={id}
               groupName={group.name}
@@ -123,6 +126,7 @@ export default async function GroupPage({
               transfers={transfersWithNames}
             />
           )}
+          </div>
         </div>
         <p className="text-muted-foreground">
           {activeMembers.length} member{activeMembers.length !== 1 && "s"}

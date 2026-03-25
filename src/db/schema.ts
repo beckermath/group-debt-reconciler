@@ -55,6 +55,21 @@ export const groupMembers = sqliteTable("group_members", {
   joinedAt: integer("joined_at", { mode: "timestamp" }).notNull(),
 });
 
+export const groupInvites = sqliteTable("group_invites", {
+  id: text("id").primaryKey(),
+  groupId: text("group_id")
+    .notNull()
+    .references(() => groups.id, { onDelete: "cascade" }),
+  code: text("code").notNull().unique(),
+  createdBy: text("created_by")
+    .notNull()
+    .references(() => users.id),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  expiresAt: integer("expires_at", { mode: "timestamp" }),
+  maxUses: integer("max_uses"),
+  useCount: integer("use_count").notNull().default(0),
+});
+
 export const members = sqliteTable("members", {
   id: text("id").primaryKey(),
   groupId: text("group_id")

@@ -1,8 +1,8 @@
 "use server";
 
 import { db } from "@/db";
-import { groups, groupMembers, members, users, expenses, expenseSplits } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { groups, groupMembers, groupInvites, members, users, expenses, expenseSplits } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { redirect } from "next/navigation";
 import { requireAuth, requireGroupAccess, requireGroupOwner } from "@/lib/auth-helpers";
@@ -153,4 +153,91 @@ export async function deleteGroup(formData: FormData) {
   await db.delete(groups).where(eq(groups.id, groupId));
 
   redirect("/");
+}
+
+function generateInviteCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+  let code = "";
+  for (let i = 0; i < 8; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
+export async function createInviteLink(formData: FormData) {
+  const groupId = formData.get("groupId") as string;
+  if (!groupId) return { error: "Missing group" };
+
+  const { userId } = await requireGroupAccess(groupId);
+
+  const code = generateInviteCode();
+  await db.insert(groupInvites).values({
+    id: randomUUID(),
+    groupId,
+    code,
+    createdBy: userId,
+    createdAt: new Date(),
+  });
+
+  return { code };
+}
+
+export async function acceptInvite(code: string) {
+  const { userId } = await requireAuth();
+
+  const [invite] = await db
+    .select()
+    .from(groupInvites)
+    .where(eq(groupInvites.code, code));
+
+  if (!invite) return { error: "Invalid invite link" };
+
+  if (invite.expiresAt && invite.expiresAt < new Date()) {
+    return { error: "This invite has expired" };
+  }
+
+  if (invite.maxUses && invite.useCount >= invite.maxUses) {
+    return { error: "This invite has reached its maximum uses" };
+  }
+
+  // Check if already a member
+  const [existing] = await db
+    .select()
+    .from(groupMembers)
+    .where(
+      and(
+        eq(groupMembers.groupId, invite.groupId),
+        eq(groupMembers.userId, userId)
+      )
+    );
+
+  if (existing) {
+    redirect(`/group/${invite.groupId}`);
+  }
+
+  // Add to groupMembers (access control)
+  await db.insert(groupMembers).values({
+    id: randomUUID(),
+    groupId: invite.groupId,
+    userId,
+    role: "member",
+    joinedAt: new Date(),
+  });
+
+  // Add to members (expense participant)
+  const [user] = await db.select().from(users).where(eq(users.id, userId));
+  await db.insert(members).values({
+    id: randomUUID(),
+    groupId: invite.groupId,
+    name: user.name ?? user.email,
+    userId,
+  });
+
+  // Increment use count
+  await db
+    .update(groupInvites)
+    .set({ useCount: invite.useCount + 1 })
+    .where(eq(groupInvites.id, invite.id));
+
+  redirect(`/group/${invite.groupId}`);
 }

@@ -53,15 +53,15 @@ export async function register(prevState: unknown, formData: FormData) {
 export async function login(prevState: unknown, formData: FormData) {
   const email = (formData.get("email") as string)?.trim().toLowerCase();
   const password = formData.get("password") as string;
+  const callbackUrl = (formData.get("callbackUrl") as string) || "/";
 
   if (!email || !password) {
     return { error: "Email and password are required" };
   }
 
   try {
-    await signIn("credentials", { email, password, redirectTo: "/" });
+    await signIn("credentials", { email, password, redirectTo: callbackUrl });
   } catch (error) {
-    // signIn throws NEXT_REDIRECT on success — let it propagate
     if ((error as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
       throw error;
     }

@@ -4,7 +4,9 @@
       "Bash(npm install:*)",
       "Bash(npm uninstall:*)",
       "Bash(npx drizzle-kit:*)",
-      "Bash(npx next:*)"
+      "Bash(npx next:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run:*)"
     ]
   }
 }

@@ -7,10 +7,10 @@ export default defineConfig({
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     coverage: {
       provider: "v8",
-      // Scope coverage reporting to the reconciliation library.
+      // Scope coverage reporting to pure library modules.
       // actions.ts requires a live DB + Next.js runtime (integration-tested
       // separately). utils.ts is a one-line Tailwind helper.
-      include: ["src/lib/reconcile.ts"],
+      include: ["src/lib/reconcile.ts", "src/lib/splits.ts"],
       reporter: ["text", "lcov"],
       thresholds: {
         branches: 80,

@@ -59,14 +59,14 @@ export function DeleteGroupButton({
               {transfers.map((t, i) => (
                 <li
                   key={i}
-                  className="flex items-center justify-between rounded-lg border p-2.5 text-sm"
+                  className="flex items-center justify-between gap-2 rounded-lg border p-2.5 text-sm"
                 >
-                  <span>
+                  <span className="min-w-0 truncate">
                     <span className="font-medium">{t.fromName}</span>
                     {" owes "}
                     <span className="font-medium">{t.toName}</span>
                   </span>
-                  <span className="font-semibold tabular-nums">
+                  <span className="font-semibold tabular-nums shrink-0">
                     ${(t.amount / 100).toFixed(2)}
                   </span>
                 </li>

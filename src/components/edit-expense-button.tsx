@@ -146,7 +146,7 @@ export function EditExpenseButton({
             <input key={id} type="hidden" name="splitWith" value={id} />
           ))}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="edit-description">Description</Label>
               <Input
@@ -236,11 +236,11 @@ export function EditExpenseButton({
                       size="sm"
                       pressed={selectedMembers.has(m.id)}
                       onPressedChange={() => toggleMember(m.id)}
-                      className="w-24 justify-start shrink-0 h-8"
+                      className="min-w-20 justify-start shrink-0 h-8"
                     >
                       {m.name}
                     </Toggle>
-                    <div className="w-28">
+                    <div className="w-24 sm:w-28 shrink-0">
                       {selectedMembers.has(m.id) && (
                         <Input
                           name={`splitAmount_${m.id}`}

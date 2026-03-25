@@ -4,6 +4,14 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Toggle } from "@/components/ui/toggle";
 import { createExpense } from "@/app/actions";
 
 type Member = { id: string; name: string };
@@ -18,6 +26,7 @@ export function ExpenseForm({
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(
     new Set(members.map((m) => m.id))
   );
+  const [paidBy, setPaidBy] = useState(members[0]?.id ?? "");
 
   function toggleMember(id: string) {
     setSelectedMembers((prev) => {
@@ -43,6 +52,7 @@ export function ExpenseForm({
   return (
     <form action={createExpense} className="space-y-4">
       <input type="hidden" name="groupId" value={groupId} />
+      <input type="hidden" name="paidBy" value={paidBy} />
       {Array.from(selectedMembers).map((id) => (
         <input key={id} type="hidden" name="splitWith" value={id} />
       ))}
@@ -67,19 +77,21 @@ export function ExpenseForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="paidBy">Paid by</Label>
-        <select
-          id="paidBy"
-          name="paidBy"
-          required
-          className="w-full rounded-md border px-3 py-2 text-sm"
-        >
-          {members.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.name}
-            </option>
-          ))}
-        </select>
+        <Label>Paid by</Label>
+        <Select value={paidBy} onValueChange={(v) => { if (v) setPaidBy(v); }}>
+          <SelectTrigger className="w-full">
+            <SelectValue>
+              {members.find((m) => m.id === paidBy)?.name ?? "Select member"}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {members.map((m) => (
+              <SelectItem key={m.id} value={m.id}>
+                {m.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="space-y-2">
@@ -95,23 +107,20 @@ export function ExpenseForm({
         </div>
         <div className="flex flex-wrap gap-2">
           {members.map((m) => (
-            <button
+            <Toggle
               key={m.id}
-              type="button"
-              onClick={() => toggleMember(m.id)}
-              className={`rounded-full border px-3 py-1 text-sm transition-colors ${
-                selectedMembers.has(m.id)
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-background text-muted-foreground"
-              }`}
+              variant="outline"
+              size="sm"
+              pressed={selectedMembers.has(m.id)}
+              onPressedChange={() => toggleMember(m.id)}
             >
               {m.name}
-            </button>
+            </Toggle>
           ))}
         </div>
       </div>
 
-      <Button type="submit" disabled={selectedMembers.size === 0}>
+      <Button type="submit" className="w-full" disabled={selectedMembers.size === 0}>
         Add Expense
       </Button>
     </form>

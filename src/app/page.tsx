@@ -1,16 +1,26 @@
 import { db } from "@/db";
-import { groups } from "@/db/schema";
-import { desc } from "drizzle-orm";
+import { groups, groupMembers } from "@/db/schema";
+import { desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { createGroup } from "./actions";
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export default function Home() {
-  const allGroups = db.select().from(groups).orderBy(desc(groups.createdAt)).all();
+export default async function Home() {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+
+  const userGroups = await db
+    .select({ id: groups.id, name: groups.name, createdAt: groups.createdAt })
+    .from(groups)
+    .innerJoin(groupMembers, eq(groups.id, groupMembers.groupId))
+    .where(eq(groupMembers.userId, session.user.id))
+    .orderBy(desc(groups.createdAt));
 
   return (
     <div className="space-y-8">
@@ -22,11 +32,11 @@ export default function Home() {
         </form>
       </div>
 
-      {allGroups.length === 0 ? (
+      {userGroups.length === 0 ? (
         <p className="text-muted-foreground">No groups yet. Create one above.</p>
       ) : (
         <div className="grid gap-3">
-          {allGroups.map((group) => (
+          {userGroups.map((group) => (
             <Link key={group.id} href={`/group/${group.id}`}>
               <Card className="hover:bg-muted/50 transition-colors">
                 <CardHeader>

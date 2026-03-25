@@ -1,9 +1,58 @@
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 
+// Auth tables
+export const users = sqliteTable("users", {
+  id: text("id").primaryKey(),
+  name: text("name"),
+  email: text("email").notNull().unique(),
+  emailVerified: integer("email_verified", { mode: "timestamp" }),
+  image: text("image"),
+  passwordHash: text("password_hash").notNull(),
+});
+
+export const accounts = sqliteTable("accounts", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  type: text("type").notNull(),
+  provider: text("provider").notNull(),
+  providerAccountId: text("provider_account_id").notNull(),
+  refresh_token: text("refresh_token"),
+  access_token: text("access_token"),
+  expires_at: integer("expires_at"),
+  token_type: text("token_type"),
+  scope: text("scope"),
+  id_token: text("id_token"),
+  session_state: text("session_state"),
+});
+
+export const verificationTokens = sqliteTable("verification_tokens", {
+  identifier: text("identifier").notNull(),
+  token: text("token").notNull(),
+  expires: integer("expires", { mode: "timestamp" }).notNull(),
+});
+
+// App tables
 export const groups = sqliteTable("groups", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
+  createdBy: text("created_by")
+    .notNull()
+    .references(() => users.id),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+export const groupMembers = sqliteTable("group_members", {
+  id: text("id").primaryKey(),
+  groupId: text("group_id")
+    .notNull()
+    .references(() => groups.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  role: text("role").notNull().default("member"),
+  joinedAt: integer("joined_at", { mode: "timestamp" }).notNull(),
 });
 
 export const members = sqliteTable("members", {
@@ -12,6 +61,8 @@ export const members = sqliteTable("members", {
     .notNull()
     .references(() => groups.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
+  userId: text("user_id").references(() => users.id),
+  removedAt: integer("removed_at", { mode: "timestamp" }),
 });
 
 export const expenses = sqliteTable("expenses", {

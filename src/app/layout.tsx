@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { DM_Sans } from "next/font/google";
 import Link from "next/link";
+import { ThemeProvider } from "@/components/theme-provider";
+import { SessionProvider } from "@/components/session-provider";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { UserMenu } from "@/components/user-menu";
+import { auth } from "@/lib/auth";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const dmSans = DM_Sans({
+  variable: "--font-sans",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -18,25 +19,34 @@ export const metadata: Metadata = {
   description: "Reconcile group debts simply",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await auth();
+
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
+    <html lang="en" className={`${dmSans.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-full flex flex-col">
-        <header className="border-b px-6 py-4">
-          <Link href="/" className="text-xl font-semibold">
-            Rekn
-          </Link>
-        </header>
-        <main className="flex-1 px-6 py-8 max-w-3xl mx-auto w-full">
-          {children}
-        </main>
+        <SessionProvider>
+        <ThemeProvider>
+          {session?.user && (
+            <header className="border-b px-6 py-4 flex items-center justify-between">
+              <Link href="/" className="text-xl font-semibold">
+                Rekn
+              </Link>
+              <div className="flex items-center gap-2">
+                <UserMenu name={session.user.name ?? session.user.email ?? ""} />
+                <ThemeToggle />
+              </div>
+            </header>
+          )}
+          <main className="flex-1 px-6 py-8 max-w-3xl mx-auto w-full">
+            {children}
+          </main>
+        </ThemeProvider>
+        </SessionProvider>
       </body>
     </html>
   );

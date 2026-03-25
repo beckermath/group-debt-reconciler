@@ -5,11 +5,36 @@ import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { addMember, deleteMember, deleteExpense } from "@/app/actions";
+import { addMember, deleteExpense, deleteMember, restoreMember } from "@/app/actions";
 import { ExpenseForm } from "@/components/expense-form";
+import { RemoveMemberButton } from "@/components/remove-member-button";
+import { DeleteGroupButton } from "@/components/delete-group-button";
 import { reconcile } from "@/lib/reconcile";
+import { requireGroupAccess } from "@/lib/auth-helpers";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
+
+function computeBalances(
+  expensesWithSplits: {
+    paidBy: string;
+    amount: number;
+    splits: { memberId: string; share: number }[];
+  }[],
+  memberIds: string[]
+) {
+  const balances = new Map<string, number>();
+  for (const id of memberIds) {
+    balances.set(id, 0);
+  }
+  for (const expense of expensesWithSplits) {
+    balances.set(expense.paidBy, (balances.get(expense.paidBy) ?? 0) + expense.amount);
+    for (const split of expense.splits) {
+      balances.set(split.memberId, (balances.get(split.memberId) ?? 0) - split.share);
+    }
+  }
+  return balances;
+}
 
 export default async function GroupPage({
   params,
@@ -18,40 +43,89 @@ export default async function GroupPage({
 }) {
   const { id } = await params;
 
-  const group = db.select().from(groups).where(eq(groups.id, id)).get();
+  const { membership } = await requireGroupAccess(id);
+  const isOwner = membership.role === "owner";
+
+  const [group] = await db.select().from(groups).where(eq(groups.id, id));
   if (!group) notFound();
 
-  const groupMembers = db
+  const allGroupMembers = await db
     .select()
     .from(members)
-    .where(eq(members.groupId, id))
-    .all();
+    .where(eq(members.groupId, id));
 
-  const groupExpenses = db
+  const activeMembers = allGroupMembers.filter((m) => !m.removedAt);
+  const removedMembers = allGroupMembers.filter((m) => m.removedAt);
+  const allMembers = [...activeMembers, ...removedMembers];
+  const memberMap = new Map(
+    allMembers.map((m) => [m.id, m.removedAt ? `${m.name} (removed)` : m.name])
+  );
+
+  const groupExpenses = await db
     .select()
     .from(expenses)
     .where(eq(expenses.groupId, id))
-    .orderBy(desc(expenses.createdAt))
-    .all();
+    .orderBy(desc(expenses.createdAt));
 
-  // Build a lookup for member names and expense splits
-  const memberMap = new Map(groupMembers.map((m) => [m.id, m.name]));
+  const expensesWithSplits = await Promise.all(
+    groupExpenses.map(async (expense) => {
+      const splits = await db
+        .select()
+        .from(expenseSplits)
+        .where(eq(expenseSplits.expenseId, expense.id));
+      return { ...expense, splits };
+    })
+  );
 
-  const expensesWithSplits = groupExpenses.map((expense) => {
-    const splits = db
-      .select()
-      .from(expenseSplits)
-      .where(eq(expenseSplits.expenseId, expense.id))
-      .all();
-    return { ...expense, splits };
-  });
+  // Compute balances for all members (including removed) for impact calculations
+  const balances = computeBalances(
+    expensesWithSplits,
+    allMembers.map((m) => m.id)
+  );
+
+  // Compute transfers for group deletion dialog
+  const transfers = reconcile(balances);
+  const hasUnsettledDebts = transfers.length > 0;
+  const transfersWithNames = transfers.map((t) => ({
+    fromName: memberMap.get(t.from) ?? "Unknown",
+    toName: memberMap.get(t.to) ?? "Unknown",
+    amount: t.amount,
+  }));
+
+  // Compute per-member impact for remove dialog
+  function getMemberImpact(memberId: string) {
+    const expensesPaidCount = groupExpenses.filter((e) => e.paidBy === memberId).length;
+    const expensesSplitCount = expensesWithSplits.filter(
+      (e) => e.paidBy !== memberId && e.splits.some((s) => s.memberId === memberId)
+    ).length;
+    return {
+      balanceCents: balances.get(memberId) ?? 0,
+      expensesPaidCount,
+      expensesSplitCount,
+    };
+  }
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold">{group.name}</h1>
+        <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+          &larr; All groups
+        </Link>
+        <div className="flex items-center justify-between mt-1">
+          <h1 className="text-2xl font-bold">{group.name}</h1>
+          {isOwner && (
+            <DeleteGroupButton
+              groupId={id}
+              groupName={group.name}
+              hasUnsettledDebts={hasUnsettledDebts}
+              totalExpenses={groupExpenses.length}
+              totalMembers={allMembers.length}
+              transfers={transfersWithNames}
+            />
+          )}
+        </div>
         <p className="text-muted-foreground">
-          {groupMembers.length} member{groupMembers.length !== 1 && "s"}
+          {activeMembers.length} member{activeMembers.length !== 1 && "s"}
         </p>
       </div>
 
@@ -66,28 +140,65 @@ export default async function GroupPage({
             <Button type="submit">Add</Button>
           </form>
 
-          {groupMembers.length === 0 ? (
+          {activeMembers.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No members yet. Add some above.
             </p>
           ) : (
             <ul className="divide-y">
-              {groupMembers.map((member) => (
-                <li
-                  key={member.id}
-                  className="flex items-center justify-between py-2"
-                >
-                  <span>{member.name}</span>
-                  <form action={deleteMember}>
-                    <input type="hidden" name="id" value={member.id} />
-                    <input type="hidden" name="groupId" value={id} />
-                    <Button variant="ghost" size="sm" type="submit">
-                      Remove
-                    </Button>
-                  </form>
-                </li>
-              ))}
+              {activeMembers.map((member) => {
+                const impact = getMemberImpact(member.id);
+                return (
+                  <li
+                    key={member.id}
+                    className="flex items-center justify-between py-2"
+                  >
+                    <span>{member.name}</span>
+                    <RemoveMemberButton
+                      member={member}
+                      groupId={id}
+                      balanceCents={impact.balanceCents}
+                      expensesPaidCount={impact.expensesPaidCount}
+                      expensesSplitCount={impact.expensesSplitCount}
+                    />
+                  </li>
+                );
+              })}
             </ul>
+          )}
+
+          {removedMembers.length > 0 && (
+            <div className="pt-2">
+              <p className="text-xs font-medium text-muted-foreground mb-2">
+                Removed members
+              </p>
+              <ul className="space-y-1">
+                {removedMembers.map((member) => (
+                  <li
+                    key={member.id}
+                    className="flex items-center justify-between py-1 text-sm text-muted-foreground"
+                  >
+                    <span>{member.name}</span>
+                    <div className="flex gap-1">
+                      <form action={restoreMember}>
+                        <input type="hidden" name="id" value={member.id} />
+                        <input type="hidden" name="groupId" value={id} />
+                        <Button variant="ghost" size="sm" type="submit">
+                          Restore
+                        </Button>
+                      </form>
+                      <form action={deleteMember}>
+                        <input type="hidden" name="id" value={member.id} />
+                        <input type="hidden" name="groupId" value={id} />
+                        <Button variant="destructive" size="sm" type="submit">
+                          Delete
+                        </Button>
+                      </form>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -97,7 +208,7 @@ export default async function GroupPage({
           <CardTitle>Add Expense</CardTitle>
         </CardHeader>
         <CardContent>
-          <ExpenseForm groupId={id} members={groupMembers} />
+          <ExpenseForm groupId={id} members={activeMembers} />
         </CardContent>
       </Card>
 
@@ -124,7 +235,7 @@ export default async function GroupPage({
                       <form action={deleteExpense}>
                         <input type="hidden" name="id" value={expense.id} />
                         <input type="hidden" name="groupId" value={id} />
-                        <Button variant="ghost" size="sm" type="submit">
+                        <Button variant="destructive" size="sm" type="submit">
                           Delete
                         </Button>
                       </form>
@@ -157,30 +268,19 @@ function ReconciliationCard({
   }[];
   memberMap: Map<string, string>;
 }) {
-  // Calculate net balances: positive = is owed, negative = owes
-  const balances = new Map<string, number>();
-  for (const [id] of memberMap) {
-    balances.set(id, 0);
-  }
-
-  for (const expense of expensesWithSplits) {
-    // Payer is owed the full amount
-    balances.set(expense.paidBy, (balances.get(expense.paidBy) ?? 0) + expense.amount);
-    // Each split member owes their share
-    for (const split of expense.splits) {
-      balances.set(split.memberId, (balances.get(split.memberId) ?? 0) - split.share);
-    }
-  }
+  const balances = computeBalances(
+    expensesWithSplits,
+    Array.from(memberMap.keys())
+  );
 
   const transfers = reconcile(balances);
 
   return (
-    <Card>
+    <Card className="border-primary/20 bg-primary/[0.02]">
       <CardHeader>
         <CardTitle>Settle Up</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Balances summary */}
         <div>
           <p className="text-sm font-medium text-muted-foreground mb-2">Balances</p>
           <ul className="space-y-1">
@@ -198,14 +298,13 @@ function ReconciliationCard({
                           : "text-muted-foreground"
                     }
                   >
-                    {balance > 0 ? "+" : ""}${(balance / 100).toFixed(2)}
+                    <span className="tabular-nums">{balance > 0 ? "+" : ""}${(balance / 100).toFixed(2)}</span>
                   </span>
                 </li>
               ))}
           </ul>
         </div>
 
-        {/* Transfers */}
         {transfers.length === 0 ? (
           <p className="text-sm text-muted-foreground">All settled up!</p>
         ) : (
@@ -224,7 +323,7 @@ function ReconciliationCard({
                     {" pays "}
                     <span className="font-medium">{memberMap.get(t.to)}</span>
                   </span>
-                  <span className="font-semibold">
+                  <span className="font-semibold tabular-nums">
                     ${(t.amount / 100).toFixed(2)}
                   </span>
                 </li>

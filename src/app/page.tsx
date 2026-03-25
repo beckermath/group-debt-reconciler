@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { groups, groupMembers } from "@/db/schema";
 import { desc, eq } from "drizzle-orm";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/submit-button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { createGroup } from "./actions";
@@ -28,7 +28,7 @@ export default async function Home() {
         <h1 className="text-2xl font-bold mb-4">Your Groups</h1>
         <form action={createGroup} className="flex gap-2">
           <Input name="name" placeholder="New group name" required />
-          <Button type="submit">Create</Button>
+          <SubmitButton>Create</SubmitButton>
         </form>
       </div>
 

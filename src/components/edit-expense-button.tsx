@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Toggle } from "@/components/ui/toggle";
@@ -279,9 +280,9 @@ export function EditExpenseButton({
             )}
           </div>
 
-          <Button type="submit" className="w-full" disabled={!canSubmit}>
+          <SubmitButton className="w-full" disabled={!canSubmit}>
             Save changes
-          </Button>
+          </SubmitButton>
         </form>
       </DialogContent>
     </Dialog>

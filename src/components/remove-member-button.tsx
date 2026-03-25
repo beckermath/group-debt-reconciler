@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/submit-button";
 import {
   Dialog,
   DialogContent,
@@ -42,9 +43,9 @@ export function RemoveMemberButton({
       <form action={softDeleteMember}>
         <input type="hidden" name="id" value={member.id} />
         <input type="hidden" name="groupId" value={groupId} />
-        <Button variant="destructive" size="sm" type="submit">
+        <SubmitButton variant="destructive" size="sm">
           Remove
-        </Button>
+        </SubmitButton>
       </form>
     );
   }
@@ -88,9 +89,9 @@ export function RemoveMemberButton({
           <form action={softDeleteMember} className="w-full">
             <input type="hidden" name="id" value={member.id} />
             <input type="hidden" name="groupId" value={groupId} />
-            <Button type="submit" className="w-full">
+            <SubmitButton className="w-full">
               Remove member
-            </Button>
+            </SubmitButton>
             <p className="mt-1 text-xs text-muted-foreground">
               Expenses and balances are preserved
             </p>
@@ -99,9 +100,9 @@ export function RemoveMemberButton({
           <form action={deleteMember} className="w-full">
             <input type="hidden" name="id" value={member.id} />
             <input type="hidden" name="groupId" value={groupId} />
-            <Button type="submit" variant="destructive" className="w-full">
+            <SubmitButton variant="destructive" className="w-full">
               Remove and delete all data
-            </Button>
+            </SubmitButton>
             <p className="mt-1 text-xs text-muted-foreground">
               Permanently deletes all expense data for this member
             </p>

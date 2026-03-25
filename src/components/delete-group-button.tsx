@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/submit-button";
 import {
   Dialog,
   DialogContent,
@@ -77,11 +78,11 @@ export function DeleteGroupButton({
         <DialogFooter>
           <form action={deleteGroup} className="w-full">
             <input type="hidden" name="groupId" value={groupId} />
-            <Button type="submit" variant="destructive" className="w-full">
+            <SubmitButton variant="destructive" className="w-full">
               {hasUnsettledDebts
                 ? "Delete group and erase all debts"
                 : "Delete group"}
-            </Button>
+            </SubmitButton>
           </form>
         </DialogFooter>
       </DialogContent>

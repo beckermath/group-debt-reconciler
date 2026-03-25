@@ -3,6 +3,7 @@ import { groups, members, expenses, expenseSplits } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/submit-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { addMember, deleteExpense, deleteMember, restoreMember } from "@/app/actions";
@@ -11,6 +12,7 @@ import { ExpenseForm } from "@/components/expense-form";
 import { RemoveMemberButton } from "@/components/remove-member-button";
 import { DeleteGroupButton } from "@/components/delete-group-button";
 import { InviteButton } from "@/components/invite-button";
+import { EditableGroupName } from "@/components/editable-group-name";
 import { reconcile } from "@/lib/reconcile";
 import { requireGroupAccess } from "@/lib/auth-helpers";
 import Link from "next/link";
@@ -114,7 +116,7 @@ export default async function GroupPage({
           &larr; All groups
         </Link>
         <div className="flex items-center justify-between mt-1">
-          <h1 className="text-2xl font-bold">{group.name}</h1>
+          <EditableGroupName groupId={id} name={group.name} isOwner={isOwner} />
           <div className="flex items-center gap-2">
             <InviteButton groupId={id} />
             {isOwner && (
@@ -142,7 +144,7 @@ export default async function GroupPage({
           <form action={addMember} className="flex gap-2">
             <input type="hidden" name="groupId" value={id} />
             <Input name="name" placeholder="Member name" required />
-            <Button type="submit">Add</Button>
+            <SubmitButton>Add</SubmitButton>
           </form>
 
           {activeMembers.length === 0 ? (
@@ -188,16 +190,16 @@ export default async function GroupPage({
                       <form action={restoreMember}>
                         <input type="hidden" name="id" value={member.id} />
                         <input type="hidden" name="groupId" value={id} />
-                        <Button variant="ghost" size="sm" type="submit">
+                        <SubmitButton variant="ghost" size="sm">
                           Restore
-                        </Button>
+                        </SubmitButton>
                       </form>
                       <form action={deleteMember}>
                         <input type="hidden" name="id" value={member.id} />
                         <input type="hidden" name="groupId" value={id} />
-                        <Button variant="destructive" size="sm" type="submit">
+                        <SubmitButton variant="destructive" size="sm">
                           Delete
-                        </Button>
+                        </SubmitButton>
                       </form>
                     </div>
                   </li>
@@ -246,9 +248,9 @@ export default async function GroupPage({
                         <form action={deleteExpense}>
                           <input type="hidden" name="id" value={expense.id} />
                           <input type="hidden" name="groupId" value={id} />
-                          <Button variant="destructive" size="sm" type="submit">
+                          <SubmitButton variant="destructive" size="sm">
                             Delete
-                          </Button>
+                          </SubmitButton>
                         </form>
                       </div>
                     </div>

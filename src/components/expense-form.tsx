@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -227,9 +227,9 @@ export function ExpenseForm({
         )}
       </div>
 
-      <Button type="submit" className="w-full" disabled={!canSubmit}>
+      <SubmitButton className="w-full" disabled={!canSubmit}>
         Add Expense
-      </Button>
+      </SubmitButton>
     </form>
   );
 }

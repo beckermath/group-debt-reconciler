@@ -7,6 +7,12 @@ import { randomUUID } from "crypto";
 import { redirect } from "next/navigation";
 import { requireAuth, requireGroupAccess, requireGroupOwner } from "@/lib/auth-helpers";
 
+export async function renameGroup(groupId: string, newName: string) {
+  if (!groupId || !newName?.trim()) return;
+  await requireGroupOwner(groupId);
+  await db.update(groups).set({ name: newName.trim() }).where(eq(groups.id, groupId));
+}
+
 export async function createGroup(formData: FormData) {
   const { userId } = await requireAuth();
   const name = formData.get("name") as string;

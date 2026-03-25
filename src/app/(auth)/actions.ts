@@ -7,13 +7,26 @@ import { randomUUID } from "crypto";
 import bcrypt from "bcryptjs";
 import { signIn } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { loginRateLimit, registerRateLimit } from "@/lib/rate-limit";
 
 function safeCallbackUrl(url: string): string {
   if (!url || !url.startsWith("/") || url.startsWith("//")) return "/";
   return url;
 }
 
+async function getClientIp(): Promise<string> {
+  const h = await headers();
+  return h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+}
+
 export async function register(prevState: unknown, formData: FormData) {
+  const ip = await getClientIp();
+  const { success } = await registerRateLimit.limit(ip);
+  if (!success) {
+    return { error: "Too many registration attempts. Please try again later." };
+  }
+
   const name = (formData.get("name") as string)?.trim();
   const email = (formData.get("email") as string)?.trim().toLowerCase();
   const password = formData.get("password") as string;
@@ -50,12 +63,17 @@ export async function register(prevState: unknown, formData: FormData) {
     if ((error as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
       throw error;
     }
-    // Sign-in after register failed, but account was created — redirect anyway
     redirect("/login");
   }
 }
 
 export async function login(prevState: unknown, formData: FormData) {
+  const ip = await getClientIp();
+  const { success } = await loginRateLimit.limit(ip);
+  if (!success) {
+    return { error: "Too many login attempts. Please try again in a few minutes." };
+  }
+
   const email = (formData.get("email") as string)?.trim().toLowerCase();
   const password = formData.get("password") as string;
   const callbackUrl = safeCallbackUrl((formData.get("callbackUrl") as string) || "/");

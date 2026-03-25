@@ -3,11 +3,6 @@ import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 export async function middleware(request: NextRequest) {
-  // Allow the debug endpoint through without auth
-  if (request.nextUrl.pathname === "/api/debug") {
-    return NextResponse.next();
-  }
-
   const token = await getToken({
     req: request,
     secret: process.env.AUTH_SECRET,

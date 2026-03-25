@@ -64,6 +64,34 @@ export async function deleteMember(formData: FormData) {
   redirect(`/group/${groupId}`);
 }
 
+function computeSplits(
+  formData: FormData,
+  splitMemberIds: string[],
+  amountCents: number
+): { memberId: string; share: number }[] {
+  const splitMode = formData.get("splitMode") as string;
+
+  if (splitMode === "custom") {
+    const splits = splitMemberIds.map((memberId) => {
+      const raw = formData.get(`splitAmount_${memberId}`) as string;
+      const share = Math.round((parseFloat(raw) || 0) * 100);
+      return { memberId, share };
+    });
+    // Validate: total of custom splits must equal amount
+    const total = splits.reduce((sum, s) => sum + s.share, 0);
+    if (total !== amountCents) return [];
+    return splits;
+  }
+
+  // Equal split with penny rounding
+  const shareBase = Math.floor(amountCents / splitMemberIds.length);
+  const remainder = amountCents - shareBase * splitMemberIds.length;
+  return splitMemberIds.map((memberId, i) => ({
+    memberId,
+    share: shareBase + (i < remainder ? 1 : 0),
+  }));
+}
+
 export async function createExpense(formData: FormData) {
   const groupId = formData.get("groupId") as string;
   const paidBy = formData.get("paidBy") as string;
@@ -78,8 +106,8 @@ export async function createExpense(formData: FormData) {
   const amountCents = Math.round(parseFloat(amountStr) * 100);
   if (isNaN(amountCents) || amountCents <= 0) return;
 
-  const shareBase = Math.floor(amountCents / splitMemberIds.length);
-  const remainder = amountCents - shareBase * splitMemberIds.length;
+  const splits = computeSplits(formData, splitMemberIds, amountCents);
+  if (splits.length === 0) return;
 
   const expenseId = randomUUID();
 
@@ -92,12 +120,12 @@ export async function createExpense(formData: FormData) {
     createdAt: new Date(),
   });
 
-  for (let i = 0; i < splitMemberIds.length; i++) {
+  for (const split of splits) {
     await db.insert(expenseSplits).values({
       id: randomUUID(),
       expenseId,
-      memberId: splitMemberIds[i],
-      share: shareBase + (i < remainder ? 1 : 0),
+      memberId: split.memberId,
+      share: split.share,
     });
   }
 
@@ -119,24 +147,22 @@ export async function updateExpense(formData: FormData) {
   const amountCents = Math.round(parseFloat(amountStr) * 100);
   if (isNaN(amountCents) || amountCents <= 0) return;
 
-  const shareBase = Math.floor(amountCents / splitMemberIds.length);
-  const remainder = amountCents - shareBase * splitMemberIds.length;
+  const splits = computeSplits(formData, splitMemberIds, amountCents);
+  if (splits.length === 0) return;
 
-  // Update the expense
   await db
     .update(expenses)
     .set({ paidBy, amount: amountCents, description: description.trim() })
     .where(eq(expenses.id, expenseId));
 
-  // Replace splits: delete old, insert new
   await db.delete(expenseSplits).where(eq(expenseSplits.expenseId, expenseId));
 
-  for (let i = 0; i < splitMemberIds.length; i++) {
+  for (const split of splits) {
     await db.insert(expenseSplits).values({
       id: randomUUID(),
       expenseId,
-      memberId: splitMemberIds[i],
-      share: shareBase + (i < remainder ? 1 : 0),
+      memberId: split.memberId,
+      share: split.share,
     });
   }
 

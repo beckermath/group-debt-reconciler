@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { addMember, deleteExpense, deleteMember, restoreMember } from "@/app/actions";
+import { EditExpenseButton } from "@/components/edit-expense-button";
 import { ExpenseForm } from "@/components/expense-form";
 import { RemoveMemberButton } from "@/components/remove-member-button";
 import { DeleteGroupButton } from "@/components/delete-group-button";
@@ -236,13 +237,20 @@ export default async function GroupPage({
                           {expense.splits.length !== 1 && "s"}
                         </p>
                       </div>
-                      <form action={deleteExpense}>
-                        <input type="hidden" name="id" value={expense.id} />
-                        <input type="hidden" name="groupId" value={id} />
-                        <Button variant="destructive" size="sm" type="submit">
-                          Delete
-                        </Button>
-                      </form>
+                      <div className="flex items-center gap-1">
+                        <EditExpenseButton
+                          expense={expense}
+                          groupId={id}
+                          members={activeMembers}
+                        />
+                        <form action={deleteExpense}>
+                          <input type="hidden" name="id" value={expense.id} />
+                          <input type="hidden" name="groupId" value={id} />
+                          <Button variant="destructive" size="sm" type="submit">
+                            Delete
+                          </Button>
+                        </form>
+                      </div>
                     </div>
                   </li>
                 ))}

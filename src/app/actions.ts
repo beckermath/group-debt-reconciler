@@ -104,6 +104,45 @@ export async function createExpense(formData: FormData) {
   redirect(`/group/${groupId}`);
 }
 
+export async function updateExpense(formData: FormData) {
+  const expenseId = formData.get("expenseId") as string;
+  const groupId = formData.get("groupId") as string;
+  const paidBy = formData.get("paidBy") as string;
+  const description = formData.get("description") as string;
+  const amountStr = formData.get("amount") as string;
+  const splitMemberIds = formData.getAll("splitWith") as string[];
+
+  if (!expenseId || !groupId || !paidBy || !description?.trim() || !amountStr || splitMemberIds.length === 0) return;
+
+  await requireGroupAccess(groupId);
+
+  const amountCents = Math.round(parseFloat(amountStr) * 100);
+  if (isNaN(amountCents) || amountCents <= 0) return;
+
+  const shareBase = Math.floor(amountCents / splitMemberIds.length);
+  const remainder = amountCents - shareBase * splitMemberIds.length;
+
+  // Update the expense
+  await db
+    .update(expenses)
+    .set({ paidBy, amount: amountCents, description: description.trim() })
+    .where(eq(expenses.id, expenseId));
+
+  // Replace splits: delete old, insert new
+  await db.delete(expenseSplits).where(eq(expenseSplits.expenseId, expenseId));
+
+  for (let i = 0; i < splitMemberIds.length; i++) {
+    await db.insert(expenseSplits).values({
+      id: randomUUID(),
+      expenseId,
+      memberId: splitMemberIds[i],
+      share: shareBase + (i < remainder ? 1 : 0),
+    });
+  }
+
+  redirect(`/group/${groupId}`);
+}
+
 export async function softDeleteMember(formData: FormData) {
   const id = formData.get("id") as string;
   const groupId = formData.get("groupId") as string;

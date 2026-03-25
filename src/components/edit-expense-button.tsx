@@ -6,6 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Toggle } from "@/components/ui/toggle";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -106,19 +113,21 @@ export function EditExpenseButton({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="edit-paidBy">Paid by</Label>
-            <select
-              id="edit-paidBy"
-              value={paidBy}
-              onChange={(e) => setPaidBy(e.target.value)}
-              className="h-8 w-full rounded-lg border border-input bg-transparent px-3 py-1.5 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30 dark:hover:bg-input/50"
-            >
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
+            <Label>Paid by</Label>
+            <Select value={paidBy} onValueChange={(v) => { if (v) setPaidBy(v); }}>
+              <SelectTrigger className="w-full">
+                <SelectValue>
+                  {members.find((m) => m.id === paidBy)?.name ?? "Select member"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {members.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    {m.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

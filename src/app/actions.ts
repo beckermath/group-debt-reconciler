@@ -2,16 +2,25 @@
 
 import { db } from "@/db";
 import { groups, groupMembers, groupInvites, members, users, expenses, expenseSplits, settlements } from "@/db/schema";
-import { eq, and, desc } from "drizzle-orm";
-import { randomUUID } from "crypto";
+import { eq, and, desc, inArray, sql } from "drizzle-orm";
+import { randomUUID, randomInt } from "crypto";
 import { redirect } from "next/navigation";
 import { requireAuth, requireGroupAccess, requireGroupOwner } from "@/lib/auth-helpers";
 import { computeSplits } from "@/lib/splits";
 
+async function validateMembersInGroup(memberIds: string[], groupId: string) {
+  if (memberIds.length === 0) return false;
+  const found = await db
+    .select({ id: members.id })
+    .from(members)
+    .where(and(inArray(members.id, memberIds), eq(members.groupId, groupId)));
+  return found.length === memberIds.length;
+}
+
 export async function renameGroup(groupId: string, newName: string) {
   if (!groupId || !newName?.trim()) return;
   await requireGroupOwner(groupId);
-  await db.update(groups).set({ name: newName.trim() }).where(eq(groups.id, groupId));
+  await db.update(groups).set({ name: newName.trim().slice(0, 100) }).where(eq(groups.id, groupId));
 }
 
 export async function createGroup(formData: FormData) {
@@ -24,7 +33,7 @@ export async function createGroup(formData: FormData) {
 
   await db.insert(groups).values({
     id,
-    name: name.trim(),
+    name: name.trim().slice(0, 100),
     createdBy: userId,
     createdAt: now,
   });
@@ -55,7 +64,7 @@ export async function addMember(formData: FormData) {
   if (!name?.trim() || !groupId) return;
 
   await requireGroupAccess(groupId);
-  await db.insert(members).values({ id: randomUUID(), groupId, name: name.trim() });
+  await db.insert(members).values({ id: randomUUID(), groupId, name: name.trim().slice(0, 100) });
   redirect(`/group/${groupId}`);
 }
 
@@ -82,8 +91,15 @@ export async function createExpense(formData: FormData) {
 
   await requireGroupAccess(groupId);
 
+  // Validate all member IDs belong to this group
+  const allMemberIds = [paidBy, ...splitMemberIds.filter((id) => id !== paidBy)];
+  if (!(await validateMembersInGroup(allMemberIds, groupId))) return;
+
   const amountCents = Math.round(parseFloat(amountStr) * 100);
   if (isNaN(amountCents) || amountCents <= 0) return;
+  if (amountCents > 100_000_00) return; // $100,000 max
+
+  const desc = description.trim().slice(0, 500);
 
   const splitMode = (formData.get("splitMode") as string) === "custom" ? "custom" : "equal";
   const customAmounts: Record<string, string> = {};
@@ -101,7 +117,7 @@ export async function createExpense(formData: FormData) {
     groupId,
     paidBy,
     amount: amountCents,
-    description: description.trim(),
+    description: desc,
     createdAt: new Date(),
   });
 
@@ -129,8 +145,14 @@ export async function updateExpense(formData: FormData) {
 
   await requireGroupAccess(groupId);
 
+  const allMemberIds = [paidBy, ...splitMemberIds.filter((id) => id !== paidBy)];
+  if (!(await validateMembersInGroup(allMemberIds, groupId))) return;
+
   const amountCents = Math.round(parseFloat(amountStr) * 100);
   if (isNaN(amountCents) || amountCents <= 0) return;
+  if (amountCents > 100_000_00) return;
+
+  const desc = description.trim().slice(0, 500);
 
   const splitMode = (formData.get("splitMode") as string) === "custom" ? "custom" : "equal";
   const customAmounts: Record<string, string> = {};
@@ -143,7 +165,7 @@ export async function updateExpense(formData: FormData) {
 
   await db
     .update(expenses)
-    .set({ paidBy, amount: amountCents, description: description.trim() })
+    .set({ paidBy, amount: amountCents, description: desc })
     .where(eq(expenses.id, expenseId));
 
   await db.delete(expenseSplits).where(eq(expenseSplits.expenseId, expenseId));
@@ -216,7 +238,7 @@ function generateInviteCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
   let code = "";
   for (let i = 0; i < 8; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
+    code += chars[randomInt(chars.length)];
   }
   return code;
 }
@@ -228,12 +250,14 @@ export async function createInviteLink(formData: FormData) {
   const { userId } = await requireGroupAccess(groupId);
 
   const code = generateInviteCode();
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
   await db.insert(groupInvites).values({
     id: randomUUID(),
     groupId,
     code,
     createdBy: userId,
     createdAt: new Date(),
+    expiresAt,
   });
 
   return { code };
@@ -272,6 +296,19 @@ export async function acceptInvite(code: string) {
     redirect(`/group/${invite.groupId}`);
   }
 
+  // Atomic increment — prevents race condition with maxUses
+  const updated = await db
+    .update(groupInvites)
+    .set({ useCount: sql`${groupInvites.useCount} + 1` })
+    .where(
+      and(
+        eq(groupInvites.id, invite.id),
+        invite.maxUses
+          ? sql`${groupInvites.useCount} < ${invite.maxUses}`
+          : undefined
+      )
+    );
+
   // Add to groupMembers (access control)
   await db.insert(groupMembers).values({
     id: randomUUID(),
@@ -289,12 +326,6 @@ export async function acceptInvite(code: string) {
     name: user.name ?? user.email,
     userId,
   });
-
-  // Increment use count
-  await db
-    .update(groupInvites)
-    .set({ useCount: invite.useCount + 1 })
-    .where(eq(groupInvites.id, invite.id));
 
   redirect(`/group/${invite.groupId}`);
 }

@@ -42,7 +42,7 @@ test.describe("Authentication", () => {
     await expect(page).toHaveURL("/", { timeout: 10000 });
 
     // Sign out
-    await page.getByRole("button", { name: "Sign out" }).click();
+    await page.getByRole("button", { name: "Sign out", exact: true }).click();
     await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
 
     // Sign back in
@@ -74,7 +74,7 @@ test.describe("Authentication", () => {
     await expect(page).toHaveURL("/", { timeout: 10000 });
 
     // Sign out
-    await page.getByRole("button", { name: "Sign out" }).click();
+    await page.getByRole("button", { name: "Sign out", exact: true }).click();
     await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
 
     // Try to register again with same email

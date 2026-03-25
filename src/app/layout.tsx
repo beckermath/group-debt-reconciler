@@ -32,7 +32,7 @@ export default async function RootLayout({
         <SessionProvider>
         <ThemeProvider>
           {session?.user && (
-            <header className="border-b px-6 py-4 flex items-center justify-between">
+            <header className="border-b px-4 sm:px-6 py-4 flex items-center justify-between">
               <Link href="/" className="text-xl font-semibold">
                 Rekn
               </Link>
@@ -42,7 +42,7 @@ export default async function RootLayout({
               </div>
             </header>
           )}
-          <main className="flex-1 px-6 py-8 max-w-3xl mx-auto w-full">
+          <main className="flex-1 px-4 sm:px-6 py-6 sm:py-8 max-w-3xl mx-auto w-full">
             {children}
           </main>
         </ThemeProvider>

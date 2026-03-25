@@ -72,14 +72,14 @@ export function EditableGroupName({
         onChange={(e) => setValue(e.target.value)}
         onBlur={save}
         onKeyDown={handleKeyDown}
-        className="text-2xl font-bold bg-transparent outline-none w-full caret-primary"
+        className="text-2xl font-bold bg-transparent outline-none flex-1 min-w-0 caret-primary"
       />
     );
   }
 
   return (
     <h1
-      className={`text-2xl font-bold cursor-text ${isPending ? "opacity-60" : ""}`}
+      className={`text-2xl font-bold cursor-text truncate ${isPending ? "opacity-60" : ""}`}
       onClick={() => {
         setValue(optimisticName);
         setEditing(true);

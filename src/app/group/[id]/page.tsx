@@ -170,9 +170,11 @@ export default async function GroupPage({
         <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
           &larr; All groups
         </Link>
-        <div className="flex items-center justify-between mt-1">
-          <EditableGroupName groupId={id} name={group.name} isOwner={isOwner} />
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2 mt-1">
+          <div className="min-w-0 flex-1">
+            <EditableGroupName groupId={id} name={group.name} isOwner={isOwner} />
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
             <InviteButton groupId={id} />
             {isOwner && (
             <DeleteGroupButton
@@ -297,17 +299,17 @@ export default async function GroupPage({
             <ul className="divide-y">
               {currentExpenses.map((expense) => (
                 <li key={expense.id} className="py-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">{expense.description}</p>
-                      <p className="text-sm text-muted-foreground">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium truncate">{expense.description}</p>
+                      <p className="text-sm text-muted-foreground truncate">
                         {memberMap.get(expense.paidBy) ?? "Unknown"} paid $
                         {(expense.amount / 100).toFixed(2)} &middot; split{" "}
                         {expense.splits.length} way
                         {expense.splits.length !== 1 && "s"}
                       </p>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 shrink-0">
                       <EditExpenseButton
                         expense={expense}
                         groupId={id}
@@ -418,14 +420,14 @@ function ReconciliationCard({
               {transfers.map((t, i) => (
                 <li
                   key={i}
-                  className="flex items-center justify-between rounded-lg border p-3"
+                  className="flex items-center justify-between gap-2 rounded-lg border p-3"
                 >
-                  <span className="text-sm">
+                  <span className="text-sm min-w-0 truncate">
                     <span className="font-medium">{memberMap.get(t.from)}</span>
                     {" pays "}
                     <span className="font-medium">{memberMap.get(t.to)}</span>
                   </span>
-                  <span className="font-semibold tabular-nums">
+                  <span className="font-semibold tabular-nums shrink-0">
                     ${(t.amount / 100).toFixed(2)}
                   </span>
                 </li>

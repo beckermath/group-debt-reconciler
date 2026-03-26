@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { users, groupMembers, members, groups, expenses, expenseSplits, settlements, groupInvites } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth-helpers";
 import { signOut } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -55,14 +55,19 @@ export async function deleteAccount(formData: FormData) {
       await db.delete(groupMembers).where(eq(groupMembers.groupId, groupId));
       await db.delete(groups).where(eq(groups.id, groupId));
     } else {
-      // Other members exist — just remove this user's membership and member entries
-      await db.delete(groupMembers).where(eq(groupMembers.userId, userId));
-      await db.delete(members).where(eq(members.userId, userId));
+      // Other members exist — just remove this user from this group
+      await db.delete(groupMembers).where(
+        and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, userId))
+      );
+      await db.delete(members).where(
+        and(eq(members.groupId, groupId), eq(members.userId, userId))
+      );
     }
   }
 
   // Delete the user account
   await db.delete(users).where(eq(users.id, userId));
 
+  await signOut({ redirect: false });
   redirect("/login");
 }

@@ -17,7 +17,11 @@ function safeCallbackUrl(url: string): string {
 
 async function getClientIp(): Promise<string> {
   const h = await headers();
-  return h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  return (
+    h.get("x-real-ip") ??
+    h.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    "unknown"
+  );
 }
 
 export async function register(prevState: unknown, formData: FormData) {
@@ -46,7 +50,7 @@ export async function register(prevState: unknown, formData: FormData) {
 
   const [existing] = await db.select().from(users).where(eq(users.email, email));
   if (existing) {
-    return { error: "An account with this email already exists" };
+    return { error: "Unable to create account. Please try a different email or sign in." };
   }
 
   const passwordHash = await bcrypt.hash(password, 10);

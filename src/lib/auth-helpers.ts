@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { groupMembers } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
+import { mutationRateLimit } from "@/lib/rate-limit";
 
 export async function requireAuth() {
   const session = await auth();
@@ -12,8 +13,17 @@ export async function requireAuth() {
   return { session, userId };
 }
 
-export async function requireGroupAccess(groupId: string) {
+export async function requireAuthWithRateLimit() {
   const { session, userId } = await requireAuth();
+  const { success } = await mutationRateLimit.limit(userId);
+  if (!success) {
+    throw new Error("Too many requests. Please slow down.");
+  }
+  return { session, userId };
+}
+
+export async function requireGroupAccess(groupId: string) {
+  const { session, userId } = await requireAuthWithRateLimit();
   const [membership] = await db
     .select()
     .from(groupMembers)

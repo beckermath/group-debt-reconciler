@@ -63,8 +63,12 @@ export async function register(prevState: unknown, formData: FormData) {
     passwordHash,
   });
 
-  // Claim any guest members that match this email
-  await claimGuestMembers(userId, [{ provider: "email", providerIdentity: email }]);
+  // Claim any guest members that match this email (best-effort — table may not exist yet)
+  try {
+    await claimGuestMembers(userId, [{ provider: "email", providerIdentity: email }]);
+  } catch {
+    // member_identities table may not exist yet; skip silently
+  }
 
   try {
     await signIn("credentials", { email, password, redirectTo: "/" });

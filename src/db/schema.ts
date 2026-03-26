@@ -115,3 +115,26 @@ export const settlements = sqliteTable("settlements", {
   settledAt: integer("settled_at", { mode: "timestamp" }).notNull(),
   note: text("note"),
 });
+
+export const memberIdentities = sqliteTable("member_identities", {
+  id: text("id").primaryKey(),
+  memberId: text("member_id")
+    .notNull()
+    .references(() => members.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(), // "phone" | "email" | "discord" | "slack"
+  providerIdentity: text("provider_identity").notNull(), // phone number, discord user id, etc.
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+export const apiKeys = sqliteTable("api_keys", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  keyHash: text("key_hash").notNull(),
+  prefix: text("prefix").notNull(), // first 8 chars for identification
+  lastUsedAt: integer("last_used_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  expiresAt: integer("expires_at", { mode: "timestamp" }),
+});

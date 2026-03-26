@@ -9,6 +9,7 @@ import { signIn } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { loginRateLimit, registerRateLimit } from "@/lib/rate-limit";
+import { claimGuestMembers } from "@/services/identity-service";
 
 function safeCallbackUrl(url: string): string {
   if (!url || !url.startsWith("/") || url.startsWith("//")) return "/";
@@ -54,12 +55,20 @@ export async function register(prevState: unknown, formData: FormData) {
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
+  const userId = randomUUID();
   await db.insert(users).values({
-    id: randomUUID(),
+    id: userId,
     name,
     email,
     passwordHash,
   });
+
+  // Claim any guest members that match this email (best-effort — table may not exist yet)
+  try {
+    await claimGuestMembers(userId, [{ provider: "email", providerIdentity: email }]);
+  } catch {
+    // member_identities table may not exist yet; skip silently
+  }
 
   try {
     await signIn("credentials", { email, password, redirectTo: "/" });

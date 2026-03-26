@@ -5,7 +5,8 @@ import { groups, groupMembers, groupInvites, members, users, expenses, expenseSp
 import { eq, and, desc, inArray, sql } from "drizzle-orm";
 import { randomUUID, randomInt } from "crypto";
 import { redirect } from "next/navigation";
-import { requireAuth, requireGroupAccess, requireGroupOwner } from "@/lib/auth-helpers";
+import { requireAuthWithRateLimit, requireGroupAccess, requireGroupOwner } from "@/lib/auth-helpers";
+import { inviteRateLimit } from "@/lib/rate-limit";
 import { computeSplits } from "@/lib/splits";
 
 async function validateMembersInGroup(memberIds: string[], groupId: string) {
@@ -24,7 +25,7 @@ export async function renameGroup(groupId: string, newName: string) {
 }
 
 export async function createGroup(formData: FormData) {
-  const { userId } = await requireAuth();
+  const { userId } = await requireAuthWithRateLimit();
   const name = formData.get("name") as string;
   if (!name?.trim()) return;
 
@@ -298,7 +299,12 @@ export async function createInviteLink(formData: FormData) {
 }
 
 export async function acceptInvite(code: string) {
-  const { userId } = await requireAuth();
+  const { userId } = await requireAuthWithRateLimit();
+
+  const { success } = await inviteRateLimit.limit(userId);
+  if (!success) {
+    return { error: "Too many invite attempts. Please try again later." };
+  }
 
   const [invite] = await db
     .select()

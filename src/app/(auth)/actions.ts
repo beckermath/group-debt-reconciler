@@ -50,7 +50,7 @@ export async function register(prevState: unknown, formData: FormData) {
 
   const [existing] = await db.select().from(users).where(eq(users.email, email));
   if (existing) {
-    return { error: "An account with this email already exists" };
+    return { error: "Unable to create account. Please try a different email or sign in." };
   }
 
   const passwordHash = await bcrypt.hash(password, 10);

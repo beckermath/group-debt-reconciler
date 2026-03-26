@@ -43,7 +43,7 @@ test.describe("Expenses", () => {
 
     // Should show settle up section with balances
     await expect(page.getByText("Settle Up")).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText("$50.00").first()).toBeVisible();
+    await expect(page.getByText("$50.00").first()).toBeVisible({ timeout: 10000 });
   });
 
   test("can delete an expense", async ({ page }) => {

@@ -85,6 +85,6 @@ test.describe("Authentication", () => {
     await page.getByLabel("Confirm password").fill("testpass123");
     await page.getByRole("button", { name: "Create account" }).click();
 
-    await expect(page.getByText("An account with this email already exists")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Unable to create account. Please try a different email or sign in.")).toBeVisible({ timeout: 5000 });
   });
 });

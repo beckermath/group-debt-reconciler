@@ -26,6 +26,11 @@ export async function POST(
   const body = await request.json().catch(() => null);
   if (!body?.name?.trim()) return res.badRequest("Name is required");
 
-  const result = await memberService.addMember(id, body.name);
+  const result = await memberService.addMember(id, body.name, {
+    phone: body.phone,
+    email: body.email,
+    discordId: body.discordId,
+    slackId: body.slackId,
+  });
   return res.created(result);
 }

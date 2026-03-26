@@ -1,15 +1,37 @@
 import { db } from "@/db";
-import { members, expenses, expenseSplits } from "@/db/schema";
+import { members, memberIdentities, expenses, expenseSplits } from "@/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { randomUUID } from "crypto";
+import { linkIdentity, type ExternalIdentity } from "./identity-service";
 
-export async function addMember(groupId: string, name: string) {
+export interface AddMemberOptions {
+  phone?: string;
+  email?: string;
+  discordId?: string;
+  slackId?: string;
+}
+
+export async function addMember(groupId: string, name: string, options?: AddMemberOptions) {
   const id = randomUUID();
   await db.insert(members).values({
     id,
     groupId,
     name: name.trim().slice(0, 100),
   });
+
+  // Link any provided identities
+  if (options) {
+    const identities: ExternalIdentity[] = [];
+    if (options.phone) identities.push({ provider: "phone", providerIdentity: options.phone });
+    if (options.email) identities.push({ provider: "email", providerIdentity: options.email });
+    if (options.discordId) identities.push({ provider: "discord", providerIdentity: options.discordId });
+    if (options.slackId) identities.push({ provider: "slack", providerIdentity: options.slackId });
+
+    for (const identity of identities) {
+      await linkIdentity(id, identity);
+    }
+  }
+
   return { memberId: id };
 }
 
@@ -20,6 +42,7 @@ export async function deleteMember(memberId: string, groupId: string) {
     .where(eq(members.id, memberId));
   if (!member || member.groupId !== groupId) return { error: "Member not found in group" };
 
+  await db.delete(memberIdentities).where(eq(memberIdentities.memberId, memberId));
   await db.delete(expenseSplits).where(eq(expenseSplits.memberId, memberId));
   await db.delete(expenses).where(eq(expenses.paidBy, memberId));
   await db.delete(members).where(eq(members.id, memberId));

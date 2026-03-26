@@ -116,6 +116,16 @@ export const settlements = sqliteTable("settlements", {
   note: text("note"),
 });
 
+export const memberIdentities = sqliteTable("member_identities", {
+  id: text("id").primaryKey(),
+  memberId: text("member_id")
+    .notNull()
+    .references(() => members.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(), // "phone" | "email" | "discord" | "slack"
+  providerIdentity: text("provider_identity").notNull(), // phone number, discord user id, etc.
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
 export const apiKeys = sqliteTable("api_keys", {
   id: text("id").primaryKey(),
   userId: text("user_id")

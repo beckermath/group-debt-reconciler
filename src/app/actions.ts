@@ -74,6 +74,13 @@ export async function deleteMember(formData: FormData) {
   if (!id || !groupId) return;
 
   await requireGroupAccess(groupId);
+
+  const [member] = await db
+    .select({ groupId: members.groupId })
+    .from(members)
+    .where(eq(members.id, id));
+  if (!member || member.groupId !== groupId) return;
+
   await db.delete(expenseSplits).where(eq(expenseSplits.memberId, id));
   await db.delete(expenses).where(eq(expenses.paidBy, id));
   await db.delete(members).where(eq(members.id, id));
@@ -145,6 +152,12 @@ export async function updateExpense(formData: FormData) {
 
   await requireGroupAccess(groupId);
 
+  const [expense] = await db
+    .select({ groupId: expenses.groupId })
+    .from(expenses)
+    .where(eq(expenses.id, expenseId));
+  if (!expense || expense.groupId !== groupId) return;
+
   const allMemberIds = [paidBy, ...splitMemberIds.filter((id) => id !== paidBy)];
   if (!(await validateMembersInGroup(allMemberIds, groupId))) return;
 
@@ -188,6 +201,13 @@ export async function softDeleteMember(formData: FormData) {
   if (!id || !groupId) return;
 
   await requireGroupAccess(groupId);
+
+  const [member] = await db
+    .select({ groupId: members.groupId })
+    .from(members)
+    .where(eq(members.id, id));
+  if (!member || member.groupId !== groupId) return;
+
   await db.update(members).set({ removedAt: new Date() }).where(eq(members.id, id));
   redirect(`/group/${groupId}`);
 }
@@ -198,6 +218,13 @@ export async function restoreMember(formData: FormData) {
   if (!id || !groupId) return;
 
   await requireGroupAccess(groupId);
+
+  const [member] = await db
+    .select({ groupId: members.groupId })
+    .from(members)
+    .where(eq(members.id, id));
+  if (!member || member.groupId !== groupId) return;
+
   await db.update(members).set({ removedAt: null }).where(eq(members.id, id));
   redirect(`/group/${groupId}`);
 }
@@ -208,6 +235,13 @@ export async function deleteExpense(formData: FormData) {
   if (!id || !groupId) return;
 
   await requireGroupAccess(groupId);
+
+  const [expense] = await db
+    .select({ groupId: expenses.groupId })
+    .from(expenses)
+    .where(eq(expenses.id, id));
+  if (!expense || expense.groupId !== groupId) return;
+
   await db.delete(expenseSplits).where(eq(expenseSplits.expenseId, id));
   await db.delete(expenses).where(eq(expenses.id, id));
   redirect(`/group/${groupId}`);
@@ -307,7 +341,12 @@ export async function acceptInvite(code: string) {
           ? sql`${groupInvites.useCount} < ${invite.maxUses}`
           : undefined
       )
-    );
+    )
+    .returning({ id: groupInvites.id });
+
+  if (updated.length === 0) {
+    return { error: "This invite has reached its maximum uses" };
+  }
 
   // Add to groupMembers (access control)
   await db.insert(groupMembers).values({

@@ -17,7 +17,11 @@ function safeCallbackUrl(url: string): string {
 
 async function getClientIp(): Promise<string> {
   const h = await headers();
-  return h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  return (
+    h.get("x-real-ip") ??
+    h.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    "unknown"
+  );
 }
 
 export async function register(prevState: unknown, formData: FormData) {

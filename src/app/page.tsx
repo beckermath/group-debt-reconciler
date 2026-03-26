@@ -1,6 +1,3 @@
-import { db } from "@/db";
-import { groups, groupMembers } from "@/db/schema";
-import { desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { SubmitButton } from "@/components/submit-button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { createGroup } from "./actions";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import * as groupService from "@/services/group-service";
 
 export const dynamic = "force-dynamic";
 
@@ -15,12 +13,7 @@ export default async function Home() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const userGroups = await db
-    .select({ id: groups.id, name: groups.name, createdAt: groups.createdAt })
-    .from(groups)
-    .innerJoin(groupMembers, eq(groups.id, groupMembers.groupId))
-    .where(eq(groupMembers.userId, session.user.id))
-    .orderBy(desc(groups.createdAt));
+  const userGroups = await groupService.getUserGroups(session.user.id);
 
   return (
     <div className="space-y-8">

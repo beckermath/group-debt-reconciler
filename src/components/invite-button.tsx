@@ -24,7 +24,7 @@ export function InviteButton({ groupId }: { groupId: string }) {
     const formData = new FormData();
     formData.set("groupId", groupId);
     const result = await createInviteLink(formData);
-    if (result?.code) {
+    if (result && "code" in result) {
       const url = `${window.location.origin}/invite/${result.code}`;
       setInviteUrl(url);
     }

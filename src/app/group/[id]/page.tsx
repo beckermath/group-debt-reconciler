@@ -1,8 +1,7 @@
 import { db } from "@/db";
-import { groups, members, expenses, expenseSplits, settlements, users } from "@/db/schema";
-import { eq, desc, gt } from "drizzle-orm";
+import { users } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/submit-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,31 +15,15 @@ import { EditableGroupName } from "@/components/editable-group-name";
 import { SettleUpButton } from "@/components/settle-up-button";
 import { SettlementHistory } from "@/components/settlement-history";
 import { reconcile } from "@/lib/reconcile";
+import { computeBalances } from "@/lib/balances";
 import { requireGroupAccess } from "@/lib/auth-helpers";
+import * as groupService from "@/services/group-service";
+import * as memberService from "@/services/member-service";
+import * as expenseService from "@/services/expense-service";
+import * as settlementService from "@/services/settlement-service";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
-
-function computeBalances(
-  expensesWithSplits: {
-    paidBy: string;
-    amount: number;
-    splits: { memberId: string; share: number }[];
-  }[],
-  memberIds: string[]
-) {
-  const balances = new Map<string, number>();
-  for (const id of memberIds) {
-    balances.set(id, 0);
-  }
-  for (const expense of expensesWithSplits) {
-    balances.set(expense.paidBy, (balances.get(expense.paidBy) ?? 0) + expense.amount);
-    for (const split of expense.splits) {
-      balances.set(split.memberId, (balances.get(split.memberId) ?? 0) - split.share);
-    }
-  }
-  return balances;
-}
 
 export default async function GroupPage({
   params,
@@ -52,13 +35,10 @@ export default async function GroupPage({
   const { membership } = await requireGroupAccess(id);
   const isOwner = membership.role === "owner";
 
-  const [group] = await db.select().from(groups).where(eq(groups.id, id));
+  const group = await groupService.getGroup(id);
   if (!group) notFound();
 
-  const allGroupMembers = await db
-    .select()
-    .from(members)
-    .where(eq(members.groupId, id));
+  const allGroupMembers = await memberService.getGroupMembers(id);
 
   const activeMembers = allGroupMembers.filter((m) => !m.removedAt);
   const removedMembers = allGroupMembers.filter((m) => m.removedAt);
@@ -68,30 +48,12 @@ export default async function GroupPage({
   );
 
   // Fetch settlements
-  const allSettlements = await db
-    .select()
-    .from(settlements)
-    .where(eq(settlements.groupId, id))
-    .orderBy(desc(settlements.settledAt));
+  const allSettlements = await settlementService.getGroupSettlements(id);
 
   const lastSettlement = allSettlements[0] ?? null;
 
   // Fetch ALL expenses for the group
-  const allExpenses = await db
-    .select()
-    .from(expenses)
-    .where(eq(expenses.groupId, id))
-    .orderBy(desc(expenses.createdAt));
-
-  const allExpensesWithSplits = await Promise.all(
-    allExpenses.map(async (expense) => {
-      const splits = await db
-        .select()
-        .from(expenseSplits)
-        .where(eq(expenseSplits.expenseId, expense.id));
-      return { ...expense, splits };
-    })
-  );
+  const allExpensesWithSplits = await expenseService.getGroupExpensesWithSplits(id);
 
   // Split into current (after last settlement) and previous
   const currentExpenses = lastSettlement
@@ -181,7 +143,7 @@ export default async function GroupPage({
               groupId={id}
               groupName={group.name}
               hasUnsettledDebts={hasUnsettledDebts}
-              totalExpenses={allExpenses.length}
+              totalExpenses={allExpensesWithSplits.length}
               totalMembers={allMembers.length}
               transfers={transfersWithNames}
             />

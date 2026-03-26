@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { withGroupAccess } from "@/lib/api-helpers";
 import * as res from "@/lib/api-response";
 import * as identityService from "@/services/identity-service";
+import { withErrorHandling } from "@/lib/api-handler";
 
 /**
  * Resolve an external identity to a member in this group.
@@ -10,11 +11,11 @@ import * as identityService from "@/services/identity-service";
  * POST /api/v1/groups/[id]/resolve
  * { "provider": "discord", "providerIdentity": "123456789" }
  */
-export async function POST(
+export const POST = withErrorHandling(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
+  context: { params: Promise<{ id: string }> }
+) => {
+  const { id } = await context.params;
   const auth = await withGroupAccess(request, id);
   if (auth instanceof Response) return auth;
 
@@ -31,4 +32,4 @@ export async function POST(
   if (!memberId) return res.notFound("No member found with this identity in this group");
 
   return res.ok({ memberId });
-}
+});

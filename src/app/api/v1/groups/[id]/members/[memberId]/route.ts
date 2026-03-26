@@ -2,12 +2,13 @@ import { NextRequest } from "next/server";
 import { withGroupAccess } from "@/lib/api-helpers";
 import * as res from "@/lib/api-response";
 import * as memberService from "@/services/member-service";
+import { withErrorHandling } from "@/lib/api-handler";
 
-export async function PATCH(
+export const PATCH = withErrorHandling(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; memberId: string }> }
-) {
-  const { id, memberId } = await params;
+  context: { params: Promise<{ id: string; memberId: string }> }
+) => {
+  const { id, memberId } = await context.params;
   const auth = await withGroupAccess(request, id);
   if (auth instanceof Response) return auth;
 
@@ -27,17 +28,17 @@ export async function PATCH(
   }
 
   return res.badRequest("Invalid action. Use 'remove' or 'restore'");
-}
+});
 
-export async function DELETE(
+export const DELETE = withErrorHandling(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; memberId: string }> }
-) {
-  const { id, memberId } = await params;
+  context: { params: Promise<{ id: string; memberId: string }> }
+) => {
+  const { id, memberId } = await context.params;
   const auth = await withGroupAccess(request, id);
   if (auth instanceof Response) return auth;
 
   const result = await memberService.deleteMember(memberId, id);
   if ("error" in result) return res.notFound(result.error);
   return res.noContent();
-}
+});

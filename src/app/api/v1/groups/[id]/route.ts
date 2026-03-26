@@ -7,12 +7,13 @@ import * as expenseService from "@/services/expense-service";
 import * as settlementService from "@/services/settlement-service";
 import { computeBalances } from "@/lib/balances";
 import { reconcile } from "@/lib/reconcile";
+import { withErrorHandling } from "@/lib/api-handler";
 
-export async function GET(
+export const GET = withErrorHandling(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
+  context: { params: Promise<{ id: string }> }
+) => {
+  const { id } = await context.params;
   const auth = await withGroupAccess(request, id);
   if (auth instanceof Response) return auth;
 
@@ -44,13 +45,13 @@ export async function GET(
     transfers,
     activeMembers: activeMembers.length,
   });
-}
+});
 
-export async function PATCH(
+export const PATCH = withErrorHandling(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
+  context: { params: Promise<{ id: string }> }
+) => {
+  const { id } = await context.params;
   const auth = await withGroupOwner(request, id);
   if (auth instanceof Response) return auth;
 
@@ -59,16 +60,16 @@ export async function PATCH(
 
   await groupService.renameGroup(id, body.name);
   return res.ok({ id, name: body.name.trim().slice(0, 100) });
-}
+});
 
-export async function DELETE(
+export const DELETE = withErrorHandling(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
+  context: { params: Promise<{ id: string }> }
+) => {
+  const { id } = await context.params;
   const auth = await withGroupOwner(request, id);
   if (auth instanceof Response) return auth;
 
   await groupService.deleteGroup(id);
   return res.noContent();
-}
+});

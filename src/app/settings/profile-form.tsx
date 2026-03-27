@@ -25,8 +25,8 @@ export function ProfileForm({ name, email }: { name: string; email: string }) {
       {state?.error && (
         <p className="text-sm text-destructive">{state.error}</p>
       )}
-      {state?.success && (
-        <p className="text-sm text-green-600">{state.success}</p>
+      {"success" in (state ?? {}) && (
+        <p className="text-sm text-green-600">{(state as any).success}</p>
       )}
 
       <SubmitButton>Save</SubmitButton>

@@ -7,13 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { addMember, deleteExpense, deleteMember, restoreMember } from "@/app/actions";
 import { EditExpenseButton } from "@/components/edit-expense-button";
-import { ExpenseForm } from "@/components/expense-form";
+import { AddExpenseDialog } from "@/components/add-expense-dialog";
 import { RemoveMemberButton } from "@/components/remove-member-button";
 import { DeleteGroupButton } from "@/components/delete-group-button";
 import { InviteButton } from "@/components/invite-button";
 import { EditableGroupName } from "@/components/editable-group-name";
 import { SettleUpButton } from "@/components/settle-up-button";
 import { SettlementHistory } from "@/components/settlement-history";
+import { MemberAvatar } from "@/components/member-avatar";
+import { GroupDetailTabs, TabsList, TabsTrigger, TabsContent } from "@/components/group-detail-tabs";
 import { reconcile } from "@/lib/reconcile";
 import { computeBalances } from "@/lib/balances";
 import { requireGroupAccess } from "@/lib/auth-helpers";
@@ -22,15 +24,20 @@ import * as memberService from "@/services/member-service";
 import * as expenseService from "@/services/expense-service";
 import * as settlementService from "@/services/settlement-service";
 import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
+
 
 export const dynamic = "force-dynamic";
 
 export default async function GroupPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { id } = await params;
+  const { tab } = await searchParams;
 
   const { membership } = await requireGroupAccess(id);
   const isOwner = membership.role === "owner";
@@ -126,11 +133,63 @@ export default async function GroupPage({
     };
   }
 
+  if (activeMembers.length === 0) {
+    return (
+      <div className="space-y-8">
+        <div>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <ChevronLeft className="size-4" />
+            All groups
+          </Link>
+          <div className="flex items-center justify-between gap-2 mt-1">
+            <div className="min-w-0 flex-1">
+              <EditableGroupName groupId={id} name={group.name} isOwner={isOwner} />
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {isOwner && (
+                <DeleteGroupButton
+                  groupId={id}
+                  groupName={group.name}
+                  hasUnsettledDebts={false}
+                  totalExpenses={0}
+                  totalMembers={0}
+                  transfers={[]}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+
+        <Card>
+          <CardContent className="py-12 text-center space-y-4">
+            <p className="text-muted-foreground">
+              Your group is empty. Add members to start splitting expenses.
+            </p>
+            <Link
+              href={`/group/${id}/setup`}
+              className="inline-flex items-center justify-center rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              Add members
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
+      {/* Header */}
       <div>
-        <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-          &larr; All groups
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <ChevronLeft className="size-4" />
+          All groups
         </Link>
         <div className="flex items-center justify-between gap-2 mt-1">
           <div className="min-w-0 flex-1">
@@ -139,15 +198,15 @@ export default async function GroupPage({
           <div className="flex items-center gap-2 shrink-0">
             <InviteButton groupId={id} />
             {isOwner && (
-            <DeleteGroupButton
-              groupId={id}
-              groupName={group.name}
-              hasUnsettledDebts={hasUnsettledDebts}
-              totalExpenses={allExpensesWithSplits.length}
-              totalMembers={allMembers.length}
-              transfers={transfersWithNames}
-            />
-          )}
+              <DeleteGroupButton
+                groupId={id}
+                groupName={group.name}
+                hasUnsettledDebts={hasUnsettledDebts}
+                totalExpenses={allExpensesWithSplits.length}
+                totalMembers={allMembers.length}
+                transfers={transfersWithNames}
+              />
+            )}
           </div>
         </div>
         <p className="text-muted-foreground">
@@ -155,241 +214,413 @@ export default async function GroupPage({
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Members</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <form action={addMember} className="flex gap-2">
-            <input type="hidden" name="groupId" value={id} />
-            <Input name="name" placeholder="Member name" required />
-            <SubmitButton>Add</SubmitButton>
-          </form>
-
-          {activeMembers.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No members yet. Add some above.
-            </p>
-          ) : (
-            <ul className="divide-y">
-              {activeMembers.map((member) => {
-                const impact = getMemberImpact(member.id);
-                return (
-                  <li
-                    key={member.id}
-                    className="flex items-center justify-between py-2"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <span>{member.name}</span>
-                      {!member.userId && (
-                        <span className="inline-flex items-center rounded-full bg-muted px-1.5 py-0.5 text-[0.65rem] font-medium text-muted-foreground">
-                          guest
-                        </span>
-                      )}
-                    </div>
-                    <RemoveMemberButton
-                      member={member}
-                      groupId={id}
-                      balanceCents={impact.balanceCents}
-                      expensesPaidCount={impact.expensesPaidCount}
-                      expensesSplitCount={impact.expensesSplitCount}
-                    />
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-
-          {removedMembers.length > 0 && (
-            <div className="pt-2">
-              <p className="text-xs font-medium text-muted-foreground mb-2">
-                Removed members
-              </p>
-              <ul className="space-y-1">
-                {removedMembers.map((member) => (
-                  <li
-                    key={member.id}
-                    className="flex items-center justify-between py-1 text-sm text-muted-foreground"
-                  >
-                    <span>{member.name}</span>
-                    <div className="flex gap-1">
-                      <form action={restoreMember}>
-                        <input type="hidden" name="id" value={member.id} />
-                        <input type="hidden" name="groupId" value={id} />
-                        <SubmitButton variant="ghost" size="sm">
-                          Restore
-                        </SubmitButton>
-                      </form>
-                      <form action={deleteMember}>
-                        <input type="hidden" name="id" value={member.id} />
-                        <input type="hidden" name="groupId" value={id} />
-                        <SubmitButton variant="destructive" size="sm">
-                          Delete
-                        </SubmitButton>
-                      </form>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Add Expense</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ExpenseForm groupId={id} members={activeMembers} />
-        </CardContent>
-      </Card>
-
-      {currentExpenses.length > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Expenses</CardTitle>
-              {lastSettlement && (
-                <span className="text-xs text-muted-foreground">
-                  Since {lastSettlement.settledAt.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                </span>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            <ul className="divide-y">
-              {currentExpenses.map((expense) => (
-                <li key={expense.id} className="py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium truncate">{expense.description}</p>
-                      <p className="text-sm text-muted-foreground truncate">
-                        {memberMap.get(expense.paidBy) ?? "Unknown"} paid $
-                        {(expense.amount / 100).toFixed(2)} &middot; split{" "}
-                        {expense.splits.length} way
-                        {expense.splits.length !== 1 && "s"}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <EditExpenseButton
-                        expense={expense}
-                        groupId={id}
-                        members={activeMembers}
-                      />
-                      <form action={deleteExpense}>
-                        <input type="hidden" name="id" value={expense.id} />
-                        <input type="hidden" name="groupId" value={id} />
-                        <SubmitButton variant="destructive" size="sm">
-                          Delete
-                        </SubmitButton>
-                      </form>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
-
+      {/* Zone A: Balances + Settle Up (promoted to top) */}
       <ReconciliationCard
-        expensesWithSplits={currentExpenses}
+        balances={balances}
         memberMap={memberMap}
         isOwner={isOwner}
         groupId={id}
         transfers={transfersWithNames}
+        activeMembers={activeMembers}
       />
 
-      <SettlementHistory
-        groupId={id}
-        settlements={settlementsWithNames}
-        expensesBySettlement={expensesBySettlement}
-        isOwner={isOwner}
-      />
+      {/* Zone B: Tabbed detail sections */}
+      <GroupDetailTabs
+        tab={tab}
+        availableTabs={settlementsWithNames.length > 0
+          ? ["expenses", "members", "history"]
+          : ["expenses", "members"]
+        }
+      >
+        <TabsList className="w-full">
+          <TabsTrigger value="expenses">
+            Expenses{currentExpenses.length > 0 && ` (${currentExpenses.length})`}
+          </TabsTrigger>
+          <TabsTrigger value="members">
+            Members ({activeMembers.length})
+          </TabsTrigger>
+          {settlementsWithNames.length > 0 && (
+            <TabsTrigger value="history">
+              History ({settlementsWithNames.length})
+            </TabsTrigger>
+          )}
+        </TabsList>
+
+        {/* Expenses Tab */}
+        <TabsContent value="expenses">
+          {currentExpenses.length === 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Expenses</CardTitle>
+              </CardHeader>
+              <CardContent className="py-8 text-center space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  No expenses yet{lastSettlement ? " since last settlement" : ""}.
+                </p>
+                <AddExpenseDialog groupId={id} members={activeMembers} />
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>
+                    Expenses
+                    {lastSettlement && (
+                      <span className="text-xs font-normal text-muted-foreground ml-2">
+                        since {lastSettlement.settledAt.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      </span>
+                    )}
+                  </CardTitle>
+                  <AddExpenseDialog groupId={id} members={activeMembers} />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ul className="divide-y">
+                  {currentExpenses.map((expense) => (
+                    <li key={expense.id} className="py-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium truncate">{expense.description}</p>
+                          <p className="text-sm text-muted-foreground truncate">
+                            {memberMap.get(expense.paidBy) ?? "Unknown"} paid $
+                            {(expense.amount / 100).toFixed(2)} &middot; split{" "}
+                            {expense.splits.length} way
+                            {expense.splits.length !== 1 && "s"}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <EditExpenseButton
+                            expense={expense}
+                            groupId={id}
+                            members={activeMembers}
+                          />
+                          <form action={deleteExpense}>
+                            <input type="hidden" name="id" value={expense.id} />
+                            <input type="hidden" name="groupId" value={id} />
+                            <SubmitButton variant="destructive" size="sm">
+                              Delete
+                            </SubmitButton>
+                          </form>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Members Tab */}
+        <TabsContent value="members">
+          <Card>
+            <CardHeader>
+              <CardTitle>Members</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <form action={addMember} className="flex gap-2">
+                <input type="hidden" name="groupId" value={id} />
+                <Input name="name" placeholder="Member name" required />
+                <SubmitButton>Add</SubmitButton>
+              </form>
+
+              {activeMembers.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No members yet. Add some above.
+                </p>
+              ) : (
+                <ul className="divide-y">
+                  {activeMembers.map((member) => {
+                    const impact = getMemberImpact(member.id);
+                    return (
+                      <li
+                        key={member.id}
+                        className="flex items-center justify-between py-2"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span>{member.name}</span>
+                          {!member.userId && (
+                            <span className="inline-flex items-center rounded-full bg-muted px-1.5 py-0.5 text-[0.65rem] font-medium text-muted-foreground">
+                              guest
+                            </span>
+                          )}
+                        </div>
+                        <RemoveMemberButton
+                          member={member}
+                          groupId={id}
+                          balanceCents={impact.balanceCents}
+                          expensesPaidCount={impact.expensesPaidCount}
+                          expensesSplitCount={impact.expensesSplitCount}
+                        />
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+
+              {removedMembers.length > 0 && (
+                <div className="pt-2">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">
+                    Removed members
+                  </p>
+                  <ul className="space-y-1">
+                    {removedMembers.map((member) => (
+                      <li
+                        key={member.id}
+                        className="flex items-center justify-between py-1 text-sm text-muted-foreground"
+                      >
+                        <span>{member.name}</span>
+                        <div className="flex gap-1">
+                          <form action={restoreMember}>
+                            <input type="hidden" name="id" value={member.id} />
+                            <input type="hidden" name="groupId" value={id} />
+                            <SubmitButton variant="ghost" size="sm">
+                              Restore
+                            </SubmitButton>
+                          </form>
+                          <form action={deleteMember}>
+                            <input type="hidden" name="id" value={member.id} />
+                            <input type="hidden" name="groupId" value={id} />
+                            <SubmitButton variant="destructive" size="sm">
+                              Delete
+                            </SubmitButton>
+                          </form>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* History Tab */}
+        {settlementsWithNames.length > 0 && (
+          <TabsContent value="history">
+            <Card>
+              <CardHeader>
+                <CardTitle>Settlement History</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SettlementHistory
+                  groupId={id}
+                  settlements={settlementsWithNames}
+                  expensesBySettlement={expensesBySettlement}
+                  isOwner={isOwner}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+      </GroupDetailTabs>
+    </div>
+  );
+}
+
+// MemberAvatar is imported from @/components/member-avatar
+
+function BalanceBar({
+  balance,
+  maxAbsBalance,
+}: {
+  balance: number;
+  maxAbsBalance: number;
+}) {
+  if (balance === 0 || maxAbsBalance === 0) return null;
+
+  const percentage = Math.round((Math.abs(balance) / maxAbsBalance) * 100);
+  const widthPercent = Math.max(percentage, 4);
+  const isPositive = balance > 0;
+
+  return (
+    <div className="mt-1.5 flex h-1.5 w-full items-center rounded-full bg-muted">
+      {isPositive ? (
+        <div
+          className="h-full rounded-full bg-owed/70 transition-all duration-500"
+          style={{ width: `${widthPercent}%` }}
+        />
+      ) : (
+        <div className="flex h-full w-full justify-end">
+          <div
+            className="h-full rounded-full bg-owes/60 transition-all duration-500"
+            style={{ width: `${widthPercent}%` }}
+          />
+        </div>
+      )}
     </div>
   );
 }
 
 function ReconciliationCard({
-  expensesWithSplits,
+  balances,
   memberMap,
   isOwner,
   groupId,
   transfers: transfersWithNames,
+  activeMembers,
 }: {
-  expensesWithSplits: {
-    id: string;
-    paidBy: string;
-    amount: number;
-    splits: { memberId: string; share: number }[];
-  }[];
+  balances: Map<string, number>;
   memberMap: Map<string, string>;
   isOwner: boolean;
   groupId: string;
   transfers: { fromName: string; toName: string; amount: number }[];
+  activeMembers: { id: string; name: string }[];
 }) {
-  const balances = computeBalances(
-    expensesWithSplits,
-    Array.from(memberMap.keys())
+  const hasTransfers = transfersWithNames.length > 0;
+  const sortedBalances = Array.from(balances.entries()).sort(
+    (a, b) => b[1] - a[1]
+  );
+  const maxAbsBalance = sortedBalances.reduce(
+    (max, [, b]) => Math.max(max, Math.abs(b)),
+    0
   );
 
-  const transfers = reconcile(balances);
-
   return (
-    <Card className="border-primary/20 bg-primary/[0.02]">
+    <Card className="border-primary/20 bg-gradient-to-br from-primary/[0.04] to-transparent">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Settle Up</CardTitle>
-          {isOwner && transfers.length > 0 && (
-            <SettleUpButton groupId={groupId} transfers={transfersWithNames} />
-          )}
+          <CardTitle>Balances</CardTitle>
+          <div className="flex items-center gap-2">
+            <AddExpenseDialog groupId={groupId} members={activeMembers} />
+            {isOwner && hasTransfers && (
+              <SettleUpButton groupId={groupId} transfers={transfersWithNames} />
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground mb-2">Balances</p>
-          <ul className="space-y-1">
-            {Array.from(balances.entries())
-              .sort((a, b) => b[1] - a[1])
-              .map(([id, balance]) => (
-                <li key={id} className="flex justify-between text-sm">
-                  <span>{memberMap.get(id)}</span>
-                  <span
-                    className={
-                      balance > 0
-                        ? "text-green-600"
-                        : balance < 0
-                          ? "text-red-600"
-                          : "text-muted-foreground"
-                    }
-                  >
-                    <span className="tabular-nums">{balance > 0 ? "+" : ""}${(balance / 100).toFixed(2)}</span>
-                  </span>
-                </li>
-              ))}
-          </ul>
-        </div>
+        {/* Per-member balances */}
+        <ul className="space-y-3">
+          {sortedBalances.map(([id, balance]) => {
+            const name = memberMap.get(id) ?? "Unknown";
+            return (
+              <li key={id}>
+                <div className="flex items-center gap-3">
+                  <MemberAvatar name={name} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="truncate text-sm font-medium">
+                        {name}
+                      </span>
+                      <span className="shrink-0 text-right">
+                        <span
+                          className={`text-sm font-semibold tabular-nums ${
+                            balance > 0
+                              ? "text-owed"
+                              : balance < 0
+                                ? "text-owes"
+                                : "text-settled"
+                          }`}
+                        >
+                          {balance > 0 ? "+" : ""}
+                          ${(balance / 100).toFixed(2)}
+                        </span>
+                        <span
+                          className={`ml-1.5 text-xs ${
+                            balance === 0
+                              ? "text-muted-foreground"
+                              : "text-muted-foreground/70"
+                          }`}
+                        >
+                          {balance > 0
+                            ? "is owed"
+                            : balance < 0
+                              ? "owes"
+                              : "settled"}
+                        </span>
+                      </span>
+                    </div>
+                    <BalanceBar
+                      balance={balance}
+                      maxAbsBalance={maxAbsBalance}
+                    />
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
 
-        {transfers.length === 0 ? (
-          <p className="text-sm text-muted-foreground">All settled up!</p>
+        {/* Divider */}
+        <div className="border-t" />
+
+        {/* Transfers */}
+        {!hasTransfers ? (
+          <div className="relative flex flex-col items-center gap-3 py-6 text-center overflow-hidden">
+            {/* CSS celebration particles */}
+            <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+              <span className="absolute left-1/4 bottom-1/2 h-1.5 w-1.5 rounded-full bg-accent/60 animate-[float-up_1.8s_ease-out_forwards]" style={{ animationDelay: "0s" }} />
+              <span className="absolute left-1/2 bottom-1/3 h-1 w-1 rounded-full bg-primary/50 animate-[float-up_2s_ease-out_forwards]" style={{ animationDelay: "0.2s" }} />
+              <span className="absolute left-2/3 bottom-1/2 h-1.5 w-1.5 rounded-full bg-owed/50 animate-[float-up_1.6s_ease-out_forwards]" style={{ animationDelay: "0.4s" }} />
+              <span className="absolute left-[40%] bottom-1/4 h-1 w-1 rounded-full bg-accent/40 animate-[float-up_2.2s_ease-out_forwards]" style={{ animationDelay: "0.1s" }} />
+              <span className="absolute left-[60%] bottom-1/3 h-1.5 w-1.5 rounded-full bg-primary/40 animate-[float-up_1.9s_ease-out_forwards]" style={{ animationDelay: "0.3s" }} />
+            </div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-owed/10 shadow-[0_0_20px_oklch(0.60_0.14_155/15%)] dark:shadow-[0_0_24px_oklch(0.60_0.14_155/20%)]">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="h-6 w-6 text-owed"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-owed" role="status">
+                All settled up!
+              </p>
+              <p className="text-xs text-muted-foreground">
+                No payments needed right now.
+              </p>
+            </div>
+          </div>
         ) : (
           <div>
-            <p className="text-sm font-medium text-muted-foreground mb-2">
-              {transfers.length} payment{transfers.length !== 1 && "s"} to settle
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {transfersWithNames.length} payment
+              {transfersWithNames.length !== 1 && "s"} to settle
             </p>
             <ul className="space-y-2">
-              {transfers.map((t, i) => (
+              {transfersWithNames.map((t, i) => (
                 <li
                   key={i}
-                  className="flex items-center justify-between gap-2 rounded-lg border p-3"
+                  className="flex items-center gap-3 rounded-lg border bg-card p-3"
                 >
-                  <span className="text-sm min-w-0 truncate">
-                    <span className="font-medium">{memberMap.get(t.from)}</span>
-                    {" pays "}
-                    <span className="font-medium">{memberMap.get(t.to)}</span>
-                  </span>
-                  <span className="font-semibold tabular-nums shrink-0">
+                  {/* From avatar */}
+                  <MemberAvatar name={t.fromName} />
+
+                  {/* Arrow */}
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    className="h-4 w-4 shrink-0 text-muted-foreground/50"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M3 10a.75.75 0 0 1 .75-.75h10.638l-3.175-2.847a.75.75 0 0 1 1.004-1.115l4.5 4.04a.75.75 0 0 1 0 1.115l-4.5 4.04a.75.75 0 0 1-1.004-1.114l3.175-2.849H3.75A.75.75 0 0 1 3 10Z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+
+                  {/* To avatar */}
+                  <MemberAvatar name={t.toName} />
+
+                  {/* Names */}
+                  <div className="min-w-0 flex-1 text-sm">
+                    <span className="font-medium">{t.fromName}</span>
+                    <span className="text-muted-foreground"> pays </span>
+                    <span className="font-medium">{t.toName}</span>
+                  </div>
+
+                  {/* Amount */}
+                  <span className="shrink-0 rounded-md bg-primary/10 px-2.5 py-1 text-sm font-semibold tabular-nums text-primary">
                     ${(t.amount / 100).toFixed(2)}
                   </span>
                 </li>

@@ -5,8 +5,9 @@ import * as userService from "@/services/user-service";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { withErrorHandling } from "@/lib/api-handler";
 
-export async function GET(request: NextRequest) {
+export const GET = withErrorHandling(async (request: NextRequest) => {
   const auth = await withAuth(request);
   if (auth instanceof Response) return auth;
 
@@ -17,9 +18,9 @@ export async function GET(request: NextRequest) {
 
   if (!user) return res.notFound("User not found");
   return res.ok(user);
-}
+});
 
-export async function PATCH(request: NextRequest) {
+export const PATCH = withErrorHandling(async (request: NextRequest) => {
   const auth = await withAuthRateLimit(request);
   if (auth instanceof Response) return auth;
 
@@ -29,12 +30,12 @@ export async function PATCH(request: NextRequest) {
   const result = await userService.updateProfile(auth.user.userId, body.name);
   if ("error" in result) return res.badRequest(result.error);
   return res.ok(result);
-}
+});
 
-export async function DELETE(request: NextRequest) {
+export const DELETE = withErrorHandling(async (request: NextRequest) => {
   const auth = await withAuthRateLimit(request);
   if (auth instanceof Response) return auth;
 
   await userService.deleteAccount(auth.user.userId);
   return res.noContent();
-}
+});

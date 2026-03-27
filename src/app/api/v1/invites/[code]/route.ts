@@ -3,12 +3,13 @@ import { withAuthRateLimit } from "@/lib/api-helpers";
 import { inviteRateLimit } from "@/lib/rate-limit";
 import * as res from "@/lib/api-response";
 import * as inviteService from "@/services/invite-service";
+import { withErrorHandling } from "@/lib/api-handler";
 
-export async function POST(
+export const POST = withErrorHandling(async (
   request: NextRequest,
-  { params }: { params: Promise<{ code: string }> }
-) {
-  const { code } = await params;
+  context: { params: Promise<{ code: string }> }
+) => {
+  const { code } = await context.params;
   const auth = await withAuthRateLimit(request);
   if (auth instanceof Response) return auth;
 
@@ -20,4 +21,4 @@ export async function POST(
   if ("error" in result) return res.badRequest(result.error);
   if ("alreadyMember" in result) return res.ok({ groupId: result.groupId, alreadyMember: true });
   return res.ok({ groupId: result.groupId });
-}
+});

@@ -5,12 +5,13 @@ import * as identityService from "@/services/identity-service";
 import { db } from "@/db";
 import { members } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { withErrorHandling } from "@/lib/api-handler";
 
-export async function GET(
+export const GET = withErrorHandling(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; memberId: string }> }
-) {
-  const { id, memberId } = await params;
+  context: { params: Promise<{ id: string; memberId: string }> }
+) => {
+  const { id, memberId } = await context.params;
   const auth = await withGroupAccess(request, id);
   if (auth instanceof Response) return auth;
 
@@ -23,13 +24,13 @@ export async function GET(
 
   const identities = await identityService.getMemberIdentities(memberId);
   return res.ok(identities);
-}
+});
 
-export async function POST(
+export const POST = withErrorHandling(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; memberId: string }> }
-) {
-  const { id, memberId } = await params;
+  context: { params: Promise<{ id: string; memberId: string }> }
+) => {
+  const { id, memberId } = await context.params;
   const auth = await withGroupAccess(request, id);
   if (auth instanceof Response) return auth;
 
@@ -56,4 +57,4 @@ export async function POST(
   });
 
   return res.created(result);
-}
+});

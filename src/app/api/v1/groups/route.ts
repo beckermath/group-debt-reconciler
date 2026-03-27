@@ -2,16 +2,17 @@ import { NextRequest } from "next/server";
 import { withAuth, withAuthRateLimit } from "@/lib/api-helpers";
 import * as res from "@/lib/api-response";
 import * as groupService from "@/services/group-service";
+import { withErrorHandling } from "@/lib/api-handler";
 
-export async function GET(request: NextRequest) {
+export const GET = withErrorHandling(async (request: NextRequest) => {
   const auth = await withAuth(request);
   if (auth instanceof Response) return auth;
 
   const groups = await groupService.getUserGroups(auth.user.userId);
   return res.ok(groups);
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withErrorHandling(async (request: NextRequest) => {
   const auth = await withAuthRateLimit(request);
   if (auth instanceof Response) return auth;
 
@@ -20,4 +21,4 @@ export async function POST(request: NextRequest) {
 
   const result = await groupService.createGroup(auth.user.userId, body.name);
   return res.created(result);
-}
+});

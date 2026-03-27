@@ -12,37 +12,70 @@ import type { SplitMode } from "@/lib/splits";
 
 export async function renameGroup(groupId: string, newName: string) {
   if (!groupId || !newName?.trim()) return;
-  await requireGroupOwner(groupId);
-  await groupService.renameGroup(groupId, newName);
+  try {
+    await requireGroupOwner(groupId);
+    await groupService.renameGroup(groupId, newName);
+  } catch (error) {
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    return { error: "Something went wrong" };
+  }
 }
 
 export async function createGroup(formData: FormData) {
-  const { userId } = await requireAuthWithRateLimit();
-  const name = formData.get("name") as string;
-  if (!name?.trim()) return;
+  const name = (formData.get("name") as string)?.trim() || "New Group";
+  try {
+    const { userId } = await requireAuthWithRateLimit();
+    const { groupId } = await groupService.createGroup(userId, name);
+    redirect(`/group/${groupId}/setup`);
+  } catch (error) {
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    console.error(error);
+  }
+}
 
-  const { groupId } = await groupService.createGroup(userId, name);
-  redirect(`/group/${groupId}`);
+export async function addMembersInBatch(groupId: string, names: string[]) {
+  if (!groupId || names.length === 0) return;
+  try {
+    await requireGroupAccess(groupId);
+    const validNames = names
+      .map((n) => n.trim())
+      .filter((n) => n.length > 0);
+    for (const name of validNames) {
+      await memberService.addMember(groupId, name);
+    }
+    redirect(`/group/${groupId}`);
+  } catch (error) {
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    console.error(error);
+  }
 }
 
 export async function addMember(formData: FormData) {
   const groupId = formData.get("groupId") as string;
   const name = formData.get("name") as string;
   if (!name?.trim() || !groupId) return;
-
-  await requireGroupAccess(groupId);
-  await memberService.addMember(groupId, name);
-  redirect(`/group/${groupId}`);
+  try {
+    await requireGroupAccess(groupId);
+    await memberService.addMember(groupId, name);
+    redirect(`/group/${groupId}?tab=members`);
+  } catch (error) {
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    console.error(error);
+  }
 }
 
 export async function deleteMember(formData: FormData) {
   const id = formData.get("id") as string;
   const groupId = formData.get("groupId") as string;
   if (!id || !groupId) return;
-
-  await requireGroupAccess(groupId);
-  await memberService.deleteMember(id, groupId);
-  redirect(`/group/${groupId}`);
+  try {
+    await requireGroupAccess(groupId);
+    await memberService.deleteMember(id, groupId);
+    redirect(`/group/${groupId}?tab=members`);
+  } catch (error) {
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    console.error(error);
+  }
 }
 
 export async function createExpense(formData: FormData) {
@@ -53,27 +86,31 @@ export async function createExpense(formData: FormData) {
   const splitMemberIds = formData.getAll("splitWith") as string[];
 
   if (!groupId || !paidBy || !description?.trim() || !amountStr || splitMemberIds.length === 0) return;
+  try {
+    await requireGroupAccess(groupId);
 
-  await requireGroupAccess(groupId);
+    const amountCents = Math.round(parseFloat(amountStr) * 100);
+    const splitMode: SplitMode = (formData.get("splitMode") as string) === "custom" ? "custom" : "equal";
+    const customAmounts: Record<string, string> = {};
+    for (const memberId of splitMemberIds) {
+      customAmounts[memberId] = (formData.get(`splitAmount_${memberId}`) as string) ?? "";
+    }
 
-  const amountCents = Math.round(parseFloat(amountStr) * 100);
-  const splitMode: SplitMode = (formData.get("splitMode") as string) === "custom" ? "custom" : "equal";
-  const customAmounts: Record<string, string> = {};
-  for (const memberId of splitMemberIds) {
-    customAmounts[memberId] = (formData.get(`splitAmount_${memberId}`) as string) ?? "";
+    await expenseService.createExpense({
+      groupId,
+      paidBy,
+      description,
+      amountCents,
+      splitMemberIds,
+      splitMode,
+      customAmounts,
+    });
+
+    redirect(`/group/${groupId}`);
+  } catch (error) {
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    console.error(error);
   }
-
-  await expenseService.createExpense({
-    groupId,
-    paidBy,
-    description,
-    amountCents,
-    splitMemberIds,
-    splitMode,
-    customAmounts,
-  });
-
-  redirect(`/group/${groupId}`);
 }
 
 export async function updateExpense(formData: FormData) {
@@ -85,107 +122,144 @@ export async function updateExpense(formData: FormData) {
   const splitMemberIds = formData.getAll("splitWith") as string[];
 
   if (!expenseId || !groupId || !paidBy || !description?.trim() || !amountStr || splitMemberIds.length === 0) return;
+  try {
+    await requireGroupAccess(groupId);
 
-  await requireGroupAccess(groupId);
+    const amountCents = Math.round(parseFloat(amountStr) * 100);
+    const splitMode: SplitMode = (formData.get("splitMode") as string) === "custom" ? "custom" : "equal";
+    const customAmounts: Record<string, string> = {};
+    for (const memberId of splitMemberIds) {
+      customAmounts[memberId] = (formData.get(`splitAmount_${memberId}`) as string) ?? "";
+    }
 
-  const amountCents = Math.round(parseFloat(amountStr) * 100);
-  const splitMode: SplitMode = (formData.get("splitMode") as string) === "custom" ? "custom" : "equal";
-  const customAmounts: Record<string, string> = {};
-  for (const memberId of splitMemberIds) {
-    customAmounts[memberId] = (formData.get(`splitAmount_${memberId}`) as string) ?? "";
+    await expenseService.updateExpense({
+      expenseId,
+      groupId,
+      paidBy,
+      description,
+      amountCents,
+      splitMemberIds,
+      splitMode,
+      customAmounts,
+    });
+
+    redirect(`/group/${groupId}`);
+  } catch (error) {
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    console.error(error);
   }
-
-  await expenseService.updateExpense({
-    expenseId,
-    groupId,
-    paidBy,
-    description,
-    amountCents,
-    splitMemberIds,
-    splitMode,
-    customAmounts,
-  });
-
-  redirect(`/group/${groupId}`);
 }
 
 export async function softDeleteMember(formData: FormData) {
   const id = formData.get("id") as string;
   const groupId = formData.get("groupId") as string;
   if (!id || !groupId) return;
-
-  await requireGroupAccess(groupId);
-  await memberService.softDeleteMember(id, groupId);
-  redirect(`/group/${groupId}`);
+  try {
+    await requireGroupAccess(groupId);
+    await memberService.softDeleteMember(id, groupId);
+    redirect(`/group/${groupId}?tab=members`);
+  } catch (error) {
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    console.error(error);
+  }
 }
 
 export async function restoreMember(formData: FormData) {
   const id = formData.get("id") as string;
   const groupId = formData.get("groupId") as string;
   if (!id || !groupId) return;
-
-  await requireGroupAccess(groupId);
-  await memberService.restoreMember(id, groupId);
-  redirect(`/group/${groupId}`);
+  try {
+    await requireGroupAccess(groupId);
+    await memberService.restoreMember(id, groupId);
+    redirect(`/group/${groupId}?tab=members`);
+  } catch (error) {
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    console.error(error);
+  }
 }
 
 export async function deleteExpense(formData: FormData) {
   const id = formData.get("id") as string;
   const groupId = formData.get("groupId") as string;
   if (!id || !groupId) return;
-
-  await requireGroupAccess(groupId);
-  await expenseService.deleteExpense(id, groupId);
-  redirect(`/group/${groupId}`);
+  try {
+    await requireGroupAccess(groupId);
+    await expenseService.deleteExpense(id, groupId);
+    redirect(`/group/${groupId}`);
+  } catch (error) {
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    console.error(error);
+  }
 }
 
 export async function deleteGroup(formData: FormData) {
   const groupId = formData.get("groupId") as string;
   if (!groupId) return;
-
-  await requireGroupOwner(groupId);
-  await groupService.deleteGroup(groupId);
-  redirect("/");
+  try {
+    await requireGroupOwner(groupId);
+    await groupService.deleteGroup(groupId);
+    redirect("/");
+  } catch (error) {
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    console.error(error);
+  }
 }
 
 export async function createInviteLink(formData: FormData) {
   const groupId = formData.get("groupId") as string;
   if (!groupId) return { error: "Missing group" };
-
-  const { userId } = await requireGroupAccess(groupId);
-  return inviteService.createInviteLink(groupId, userId);
+  try {
+    const { userId } = await requireGroupAccess(groupId);
+    return await inviteService.createInviteLink(groupId, userId);
+  } catch (error) {
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    return { error: "Something went wrong" };
+  }
 }
 
 export async function acceptInvite(code: string) {
-  const { userId } = await requireAuthWithRateLimit();
+  try {
+    const { userId } = await requireAuthWithRateLimit();
 
-  const { success } = await inviteRateLimit.limit(userId);
-  if (!success) {
-    return { error: "Too many invite attempts. Please try again later." };
+    const { success } = await inviteRateLimit.limit(userId);
+    if (!success) {
+      return { error: "Too many invite attempts. Please try again later." };
+    }
+
+    const result = await inviteService.acceptInvite(code, userId);
+
+    if ("error" in result) return result;
+    if ("alreadyMember" in result) redirect(`/group/${result.groupId}`);
+    redirect(`/group/${result.groupId}`);
+  } catch (error) {
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    console.error(error);
   }
-
-  const result = await inviteService.acceptInvite(code, userId);
-
-  if ("error" in result) return result;
-  if ("alreadyMember" in result) redirect(`/group/${result.groupId}`);
-  redirect(`/group/${result.groupId}`);
 }
 
 export async function settleUp(formData: FormData) {
   const groupId = formData.get("groupId") as string;
   if (!groupId) return;
-
-  const { userId } = await requireGroupOwner(groupId);
-  await settlementService.settleUp(groupId, userId);
-  redirect(`/group/${groupId}`);
+  try {
+    const { userId } = await requireGroupOwner(groupId);
+    await settlementService.settleUp(groupId, userId);
+    redirect(`/group/${groupId}?tab=history`);
+  } catch (error) {
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    console.error(error);
+  }
 }
 
 export async function undoSettlement(formData: FormData) {
   const groupId = formData.get("groupId") as string;
   const settlementId = formData.get("settlementId") as string;
   if (!groupId || !settlementId) return;
-
-  await requireGroupOwner(groupId);
-  await settlementService.undoSettlement(settlementId, groupId);
-  redirect(`/group/${groupId}`);
+  try {
+    await requireGroupOwner(groupId);
+    await settlementService.undoSettlement(settlementId, groupId);
+    redirect(`/group/${groupId}?tab=history`);
+  } catch (error) {
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    console.error(error);
+  }
 }

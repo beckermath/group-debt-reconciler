@@ -33,7 +33,7 @@ export default async function RootLayout({
         <ThemeProvider>
           {session?.user && (
             <header className="border-b px-4 sm:px-6 py-4 flex items-center justify-between">
-              <Link href="/" className="text-xl font-semibold">
+              <Link href="/" className="text-xl font-bold tracking-tight text-primary">
                 Rekn
               </Link>
               <div className="flex items-center gap-2">

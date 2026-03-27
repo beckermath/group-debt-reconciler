@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,9 +20,11 @@ type Member = { id: string; name: string };
 export function ExpenseForm({
   groupId,
   members,
+  onSuccess,
 }: {
   groupId: string;
   members: Member[];
+  onSuccess?: () => void;
 }) {
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(
     new Set(members.map((m) => m.id))
@@ -79,6 +81,17 @@ export function ExpenseForm({
 
   const isCustomBalanced = isCustomSplit && remainingCents === 0 && amountCents > 0;
   const canSubmit = selectedMembers.size > 0 && (!isCustomSplit || isCustomBalanced);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  async function handleAction(formData: FormData) {
+    await createExpense(formData);
+    formRef.current?.reset();
+    setAmount("");
+    setCustomAmounts({});
+    setSelectedMembers(new Set(members.map((m) => m.id)));
+    setIsCustomSplit(false);
+    onSuccess?.();
+  }
 
   if (members.length < 2) {
     return (
@@ -89,7 +102,7 @@ export function ExpenseForm({
   }
 
   return (
-    <form action={createExpense} className="space-y-4">
+    <form ref={formRef} action={handleAction} className="space-y-4">
       <input type="hidden" name="groupId" value={groupId} />
       <input type="hidden" name="paidBy" value={paidBy} />
       <input type="hidden" name="splitMode" value={isCustomSplit ? "custom" : "equal"} />

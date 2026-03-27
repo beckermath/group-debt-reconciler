@@ -2,24 +2,25 @@ import { NextRequest } from "next/server";
 import { withGroupAccess } from "@/lib/api-helpers";
 import * as res from "@/lib/api-response";
 import * as memberService from "@/services/member-service";
+import { withErrorHandling } from "@/lib/api-handler";
 
-export async function GET(
+export const GET = withErrorHandling(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
+  context: { params: Promise<{ id: string }> }
+) => {
+  const { id } = await context.params;
   const auth = await withGroupAccess(request, id);
   if (auth instanceof Response) return auth;
 
   const members = await memberService.getGroupMembers(id);
   return res.ok(members);
-}
+});
 
-export async function POST(
+export const POST = withErrorHandling(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
+  context: { params: Promise<{ id: string }> }
+) => {
+  const { id } = await context.params;
   const auth = await withGroupAccess(request, id);
   if (auth instanceof Response) return auth;
 
@@ -33,4 +34,4 @@ export async function POST(
     slackId: body.slackId,
   });
   return res.created(result);
-}
+});

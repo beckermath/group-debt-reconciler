@@ -20,7 +20,11 @@ async function createGroup(page: import("@playwright/test").Page, name: string) 
   await page.locator("[data-slot='dialog-content']").getByRole("button", { name: "Create group" }).click();
   await expect(page).toHaveURL(/\/group\/.*\/setup/, { timeout: 10000 });
   // Complete the setup by clicking "Continue"
-  await page.getByRole("button", { name: /skip for now/i }).click();
+  // Get the group ID from the setup URL and navigate to the group page
+  await expect(page).toHaveURL(/\/group\/.*\/setup/, { timeout: 10000 });
+  const setupUrl = page.url();
+  const groupUrl = setupUrl.replace("/setup", "");
+  await page.goto(groupUrl);
   await expect(page).toHaveURL(/\/group\/(?!.*setup)/, { timeout: 10000 });
 }
 

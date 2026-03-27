@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronRight } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SubmitButton } from "@/components/submit-button";
+import { Button } from "@/components/ui/button";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { undoSettlement } from "@/app/actions";
 
 type Settlement = {
@@ -36,60 +37,63 @@ export function SettlementHistory({
   expensesBySettlement: Record<string, Expense[]>;
   isOwner: boolean;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const [expandedPeriods, setExpandedPeriods] = useState<Set<string>>(new Set());
+  const [viewingSettlementId, setViewingSettlementId] = useState<string | null>(null);
 
   if (settlements.length === 0) return null;
 
-  function togglePeriod(id: string) {
-    setExpandedPeriods((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
+  const viewingExpenses = viewingSettlementId
+    ? expensesBySettlement[viewingSettlementId] ?? []
+    : [];
+  const viewingSettlement = viewingSettlementId
+    ? settlements.find((s) => s.id === viewingSettlementId)
+    : null;
 
   return (
-    <Card>
-      <Collapsible open={expanded} onOpenChange={setExpanded}>
-        <CardHeader>
-          <CollapsibleTrigger className="flex items-center justify-between w-full cursor-pointer">
-            <CardTitle>Settlement History</CardTitle>
-            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-              <span>
-                {settlements.length} settlement{settlements.length !== 1 && "s"}
-              </span>
-              <ChevronRight
-                className={`size-4 transition-transform duration-200 ${expanded ? "rotate-90" : ""}`}
-              />
-            </div>
-          </CollapsibleTrigger>
-        </CardHeader>
-
-        <CollapsibleContent className="mt-4">
-          <CardContent className="space-y-4">
+    <>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-left text-muted-foreground">
+              <th scope="col" className="pb-2 font-medium">Date</th>
+              <th scope="col" className="pb-2 font-medium">Settled by</th>
+              <th scope="col" className="pb-2 font-medium text-right">Expenses</th>
+              <th scope="col" className="pb-2 font-medium text-right">Total</th>
+              <th scope="col" className="pb-2 font-medium text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
             {settlements.map((settlement, index) => {
               const periodExpenses = expensesBySettlement[settlement.id] ?? [];
-              const isPeriodExpanded = expandedPeriods.has(settlement.id);
+              const totalCents = periodExpenses.reduce((sum, e) => sum + e.amount, 0);
               const isLatest = index === 0;
 
               return (
-                <div key={settlement.id} className="rounded-lg border p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">
-                        {settlement.settledAt.toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Settled by {settlement.settledByName}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
+                <tr key={settlement.id} className="group">
+                  <td className="py-3 whitespace-nowrap">
+                    {settlement.settledAt.toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </td>
+                  <td className="py-3">{settlement.settledByName}</td>
+                  <td className="py-3 text-right tabular-nums">
+                    {periodExpenses.length}
+                  </td>
+                  <td className="py-3 text-right font-medium tabular-nums">
+                    ${(totalCents / 100).toFixed(2)}
+                  </td>
+                  <td className="py-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      {periodExpenses.length > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setViewingSettlementId(settlement.id)}
+                        >
+                          View
+                        </Button>
+                      )}
                       {isLatest && isOwner && (
                         <form action={undoSettlement}>
                           <input type="hidden" name="groupId" value={groupId} />
@@ -99,46 +103,51 @@ export function SettlementHistory({
                           </SubmitButton>
                         </form>
                       )}
-                      {periodExpenses.length > 0 && (
-                        <button
-                          onClick={() => togglePeriod(settlement.id)}
-                          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground cursor-pointer"
-                        >
-                          <span>
-                            {periodExpenses.length} expense{periodExpenses.length !== 1 ? "s" : ""}
-                          </span>
-                          <ChevronRight
-                            className={`size-3.5 transition-transform duration-200 ${isPeriodExpanded ? "rotate-90" : ""}`}
-                          />
-                        </button>
-                      )}
                     </div>
-                  </div>
-
-                  {isPeriodExpanded && periodExpenses.length > 0 && (
-                    <ul className="divide-y mt-4 pt-3 border-t">
-                      {periodExpenses.map((expense) => (
-                        <li key={expense.id} className="py-3 text-sm">
-                          <div className="flex justify-between">
-                            <span>{expense.description}</span>
-                            <span className="tabular-nums font-medium">
-                              ${(expense.amount / 100).toFixed(2)}
-                            </span>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            {expense.paidByName} paid &middot; split {expense.splitCount} way
-                            {expense.splitCount !== 1 && "s"}
-                          </p>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
+                  </td>
+                </tr>
               );
             })}
-          </CardContent>
-        </CollapsibleContent>
-      </Collapsible>
-    </Card>
+          </tbody>
+        </table>
+      </div>
+
+      <Dialog
+        open={viewingSettlementId !== null}
+        onOpenChange={(open) => { if (!open) setViewingSettlementId(null); }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Settlement &mdash;{" "}
+              {viewingSettlement?.settledAt.toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </DialogTitle>
+          </DialogHeader>
+          {viewingExpenses.length > 0 && (
+            <ul className="divide-y max-h-80 overflow-y-auto">
+              {viewingExpenses.map((expense) => (
+                <li key={expense.id} className="py-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="truncate">{expense.description}</span>
+                    <span className="tabular-nums font-medium shrink-0 ml-2">
+                      ${(expense.amount / 100).toFixed(2)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {expense.paidByName} paid &middot; split {expense.splitCount} way
+                    {expense.splitCount !== 1 && "s"}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+          <DialogFooter showCloseButton />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

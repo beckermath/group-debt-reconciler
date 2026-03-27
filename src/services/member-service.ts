@@ -42,7 +42,11 @@ export async function deleteMember(memberId: string, groupId: string) {
     .where(eq(members.id, memberId));
   if (!member || member.groupId !== groupId) return { error: "Member not found in group" };
 
-  await db.delete(memberIdentities).where(eq(memberIdentities.memberId, memberId));
+  try {
+    await db.delete(memberIdentities).where(eq(memberIdentities.memberId, memberId));
+  } catch {
+    // member_identities table may not exist yet
+  }
   await db.delete(expenseSplits).where(eq(expenseSplits.memberId, memberId));
   await db.delete(expenses).where(eq(expenses.paidBy, memberId));
   await db.delete(members).where(eq(members.id, memberId));

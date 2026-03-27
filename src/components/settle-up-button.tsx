@@ -23,6 +23,8 @@ export function SettleUpButton({
 }) {
   const [open, setOpen] = useState(false);
 
+  const totalCents = transfers.reduce((sum, t) => sum + t.amount, 0);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
@@ -42,9 +44,14 @@ export function SettleUpButton({
         </DialogHeader>
 
         <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">
-            Debts being settled
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-muted-foreground">
+              {transfers.length} payment{transfers.length !== 1 && "s"} to settle
+            </p>
+            <p className="text-sm font-semibold tabular-nums">
+              ${(totalCents / 100).toFixed(2)} total
+            </p>
+          </div>
           <ul className="space-y-1.5">
             {transfers.map((t, i) => (
               <li

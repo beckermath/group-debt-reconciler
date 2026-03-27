@@ -14,9 +14,10 @@ async function registerAndLogin(page: import("@playwright/test").Page) {
 
 // Helper to create a group via the dialog and setup flow
 async function createGroup(page: import("@playwright/test").Page, name: string) {
-  await page.getByRole("button", { name: "Create group" }).click();
+  await page.getByRole("button", { name: "Create group" }).first().click();
   await page.getByLabel("Group name").fill(name);
-  await page.getByRole("button", { name: "Create group" }).nth(1).click();
+  // Click the submit button inside the dialog
+  await page.locator("[data-slot='dialog-content']").getByRole("button", { name: "Create group" }).click();
   await expect(page).toHaveURL(/\/group\/.*\/setup/, { timeout: 10000 });
   // Complete the setup by clicking "Continue"
   await page.getByRole("button", { name: /skip for now/i }).click();

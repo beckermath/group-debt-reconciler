@@ -11,6 +11,7 @@ import { AddExpenseDialog } from "@/components/add-expense-dialog";
 import { RemoveMemberButton } from "@/components/remove-member-button";
 import { DeleteGroupButton } from "@/components/delete-group-button";
 import { InviteButton } from "@/components/invite-button";
+import { DirectInviteDialog } from "@/components/direct-invite-dialog";
 import { EditableGroupName } from "@/components/editable-group-name";
 import { SettleUpButton } from "@/components/settle-up-button";
 import { SettlementHistory } from "@/components/settlement-history";
@@ -196,6 +197,7 @@ export default async function GroupPage({
             <EditableGroupName groupId={id} name={group.name} isOwner={isOwner} />
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <DirectInviteDialog groupId={id} />
             <InviteButton groupId={id} />
             {isOwner && (
               <DeleteGroupButton

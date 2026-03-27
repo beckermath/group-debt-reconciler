@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { groups, groupMembers, members, users, expenses, expenseSplits, settlements, groupInvites } from "@/db/schema";
+import { groups, groupMembers, members, users, expenses, expenseSplits, settlements, groupInvites, directInvites } from "@/db/schema";
 import { eq, desc, and, gt, isNull } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { computeBalances } from "@/lib/balances";
@@ -54,6 +54,7 @@ export async function deleteGroup(groupId: string) {
   await db.delete(expenses).where(eq(expenses.groupId, groupId));
   await db.delete(settlements).where(eq(settlements.groupId, groupId));
   await db.delete(members).where(eq(members.groupId, groupId));
+  await db.delete(directInvites).where(eq(directInvites.groupId, groupId));
   await db.delete(groupInvites).where(eq(groupInvites.groupId, groupId));
   await db.delete(groupMembers).where(eq(groupMembers.groupId, groupId));
   await db.delete(groups).where(eq(groups.id, groupId));

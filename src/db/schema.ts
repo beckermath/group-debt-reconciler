@@ -137,6 +137,22 @@ export const otpCodes = sqliteTable("otp_codes", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
 
+export const directInvites = sqliteTable("direct_invites", {
+  id: text("id").primaryKey(),
+  groupId: text("group_id")
+    .notNull()
+    .references(() => groups.id, { onDelete: "cascade" }),
+  invitedBy: text("invited_by")
+    .notNull()
+    .references(() => users.id),
+  invitedUserId: text("invited_user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("pending"), // "pending" | "accepted" | "declined"
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  respondedAt: integer("responded_at", { mode: "timestamp" }),
+});
+
 export const apiKeys = sqliteTable("api_keys", {
   id: text("id").primaryKey(),
   userId: text("user_id")

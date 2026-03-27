@@ -2,12 +2,14 @@
 
 import { redirect } from "next/navigation";
 import { requireAuthWithRateLimit, requireGroupAccess, requireGroupOwner } from "@/lib/auth-helpers";
-import { inviteRateLimit } from "@/lib/rate-limit";
+import { inviteRateLimit, searchRateLimit, directInviteRateLimit } from "@/lib/rate-limit";
 import * as groupService from "@/services/group-service";
 import * as memberService from "@/services/member-service";
 import * as expenseService from "@/services/expense-service";
 import * as settlementService from "@/services/settlement-service";
 import * as inviteService from "@/services/invite-service";
+import * as directInviteService from "@/services/direct-invite-service";
+import * as userSearchService from "@/services/user-search-service";
 import type { SplitMode } from "@/lib/splits";
 
 export async function renameGroup(groupId: string, newName: string) {
@@ -258,6 +260,62 @@ export async function undoSettlement(formData: FormData) {
     await requireGroupOwner(groupId);
     await settlementService.undoSettlement(settlementId, groupId);
     redirect(`/group/${groupId}?tab=history`);
+  } catch (error) {
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    console.error(error);
+  }
+}
+
+// --- Direct invite actions ---
+
+export async function searchUsers(query: string, groupId: string) {
+  try {
+    const { userId } = await requireGroupAccess(groupId);
+    const { success } = await searchRateLimit.limit(userId);
+    if (!success) return { error: "Too many searches. Please slow down.", results: [] };
+    const results = await userSearchService.searchUsers(query, userId, groupId);
+    return { results };
+  } catch (error) {
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    return { error: "Something went wrong", results: [] };
+  }
+}
+
+export async function sendDirectInvite(formData: FormData) {
+  const groupId = formData.get("groupId") as string;
+  const targetUserId = formData.get("userId") as string;
+  if (!groupId || !targetUserId) return { error: "Missing fields" };
+  try {
+    const { userId } = await requireGroupAccess(groupId);
+    const { success } = await directInviteRateLimit.limit(userId);
+    if (!success) return { error: "Too many invites. Please try again later." };
+    return await directInviteService.sendDirectInvite(groupId, userId, targetUserId);
+  } catch (error) {
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    return { error: "Something went wrong" };
+  }
+}
+
+export async function acceptDirectInvite(formData: FormData) {
+  const inviteId = formData.get("inviteId") as string;
+  if (!inviteId) return;
+  try {
+    const { userId } = await requireAuthWithRateLimit();
+    const result = await directInviteService.acceptDirectInvite(inviteId, userId);
+    if (result.groupId) redirect(`/group/${result.groupId}`);
+  } catch (error) {
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    console.error(error);
+  }
+}
+
+export async function declineDirectInvite(formData: FormData) {
+  const inviteId = formData.get("inviteId") as string;
+  if (!inviteId) return;
+  try {
+    const { userId } = await requireAuthWithRateLimit();
+    await directInviteService.declineDirectInvite(inviteId, userId);
+    redirect("/");
   } catch (error) {
     if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
     console.error(error);

@@ -45,3 +45,21 @@ export const inviteRateLimit = redis
       prefix: "ratelimit:invite",
     })
   : { limit: async () => ({ success: true }) };
+
+// 30 user searches per minute per user
+export const searchRateLimit = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(30, "1 m"),
+      prefix: "ratelimit:search",
+    })
+  : { limit: async () => ({ success: true }) };
+
+// 10 direct invites per hour per user
+export const directInviteRateLimit = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(10, "1 h"),
+      prefix: "ratelimit:direct-invite",
+    })
+  : { limit: async () => ({ success: true }) };

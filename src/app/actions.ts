@@ -21,12 +21,27 @@ export async function renameGroup(groupId: string, newName: string) {
   }
 }
 
-export async function createGroup(formData: FormData) {
-  const name = formData.get("name") as string;
-  if (!name?.trim()) return;
+export async function createGroup() {
   try {
     const { userId } = await requireAuthWithRateLimit();
-    const { groupId } = await groupService.createGroup(userId, name);
+    const { groupId } = await groupService.createGroup(userId, "New Group");
+    redirect(`/group/${groupId}/setup`);
+  } catch (error) {
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    console.error(error);
+  }
+}
+
+export async function addMembersInBatch(groupId: string, names: string[]) {
+  if (!groupId || names.length === 0) return;
+  try {
+    await requireGroupAccess(groupId);
+    const validNames = names
+      .map((n) => n.trim())
+      .filter((n) => n.length > 0);
+    for (const name of validNames) {
+      await memberService.addMember(groupId, name);
+    }
     redirect(`/group/${groupId}`);
   } catch (error) {
     if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
@@ -41,7 +56,7 @@ export async function addMember(formData: FormData) {
   try {
     await requireGroupAccess(groupId);
     await memberService.addMember(groupId, name);
-    redirect(`/group/${groupId}`);
+    redirect(`/group/${groupId}?tab=members`);
   } catch (error) {
     if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
     console.error(error);
@@ -55,7 +70,7 @@ export async function deleteMember(formData: FormData) {
   try {
     await requireGroupAccess(groupId);
     await memberService.deleteMember(id, groupId);
-    redirect(`/group/${groupId}`);
+    redirect(`/group/${groupId}?tab=members`);
   } catch (error) {
     if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
     console.error(error);
@@ -141,7 +156,7 @@ export async function softDeleteMember(formData: FormData) {
   try {
     await requireGroupAccess(groupId);
     await memberService.softDeleteMember(id, groupId);
-    redirect(`/group/${groupId}`);
+    redirect(`/group/${groupId}?tab=members`);
   } catch (error) {
     if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
     console.error(error);
@@ -155,7 +170,7 @@ export async function restoreMember(formData: FormData) {
   try {
     await requireGroupAccess(groupId);
     await memberService.restoreMember(id, groupId);
-    redirect(`/group/${groupId}`);
+    redirect(`/group/${groupId}?tab=members`);
   } catch (error) {
     if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
     console.error(error);
@@ -227,7 +242,7 @@ export async function settleUp(formData: FormData) {
   try {
     const { userId } = await requireGroupOwner(groupId);
     await settlementService.settleUp(groupId, userId);
-    redirect(`/group/${groupId}`);
+    redirect(`/group/${groupId}?tab=history`);
   } catch (error) {
     if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
     console.error(error);
@@ -241,7 +256,7 @@ export async function undoSettlement(formData: FormData) {
   try {
     await requireGroupOwner(groupId);
     await settlementService.undoSettlement(settlementId, groupId);
-    redirect(`/group/${groupId}`);
+    redirect(`/group/${groupId}?tab=history`);
   } catch (error) {
     if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
     console.error(error);

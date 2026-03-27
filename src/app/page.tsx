@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { SubmitButton } from "@/components/submit-button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { createGroup } from "./actions";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import * as groupService from "@/services/group-service";
+import { Plus } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -17,16 +17,22 @@ export default async function Home() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold mb-4">Your Groups</h1>
-        <form action={createGroup} className="flex gap-2">
-          <Input name="name" placeholder="New group name" required />
-          <SubmitButton>Create</SubmitButton>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Your Groups</h1>
+        <form action={createGroup}>
+          <SubmitButton size="default">
+            <Plus className="size-4" />
+            Create group
+          </SubmitButton>
         </form>
       </div>
 
       {userGroups.length === 0 ? (
-        <p className="text-muted-foreground">No groups yet. Create one above.</p>
+        <div className="text-center py-12 space-y-3">
+          <p className="text-muted-foreground">
+            No groups yet. Create one to start splitting expenses.
+          </p>
+        </div>
       ) : (
         <div className="grid gap-3">
           {userGroups.map((group) => (

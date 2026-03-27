@@ -4,10 +4,11 @@ import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
   name: text("name"),
-  email: text("email").notNull().unique(),
+  phoneNumber: text("phone_number").unique(),
+  email: text("email").unique(),
   emailVerified: integer("email_verified", { mode: "timestamp" }),
   image: text("image"),
-  passwordHash: text("password_hash").notNull(),
+  passwordHash: text("password_hash"),
 });
 
 export const accounts = sqliteTable("accounts", {
@@ -123,6 +124,16 @@ export const memberIdentities = sqliteTable("member_identities", {
     .references(() => members.id, { onDelete: "cascade" }),
   provider: text("provider").notNull(), // "phone" | "email" | "discord" | "slack"
   providerIdentity: text("provider_identity").notNull(), // phone number, discord user id, etc.
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+export const otpCodes = sqliteTable("otp_codes", {
+  id: text("id").primaryKey(),
+  phoneNumber: text("phone_number").notNull(),
+  code: text("code").notNull(),
+  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+  attempts: integer("attempts").notNull().default(0),
+  usedAt: integer("used_at", { mode: "timestamp" }),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
 

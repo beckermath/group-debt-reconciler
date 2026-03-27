@@ -91,7 +91,7 @@ export default async function GroupPage({
   for (const s of allSettlements) {
     if (!settlementUsers.has(s.settledBy)) {
       const [u] = await db.select().from(users).where(eq(users.id, s.settledBy));
-      if (u) settlementUsers.set(s.settledBy, u.name ?? u.email);
+      if (u) settlementUsers.set(s.settledBy, u.name ?? u.phoneNumber ?? "Unknown");
     }
   }
 

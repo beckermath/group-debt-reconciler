@@ -37,7 +37,7 @@ export default async function RootLayout({
                 Rekn
               </Link>
               <div className="flex items-center gap-2">
-                <UserMenu name={session.user.name ?? session.user.email ?? ""} />
+                <UserMenu name={session.user.name ?? ""} />
                 <ThemeToggle />
               </div>
             </header>

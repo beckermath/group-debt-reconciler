@@ -91,7 +91,7 @@ export async function acceptInvite(code: string, userId: string) {
   await db.insert(members).values({
     id: randomUUID(),
     groupId: invite.groupId,
-    name: user.name ?? user.email,
+    name: user.name ?? user.phoneNumber ?? "Unknown",
     userId,
   });
 

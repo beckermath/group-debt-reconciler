@@ -10,21 +10,21 @@ const redis = isTest
       token: process.env.UPSTASH_REDIS_REST_TOKEN!,
     });
 
-// 5 login attempts per 15 minutes per IP
-export const loginRateLimit = redis
+// 3 OTP sends per phone per 15 minutes
+export const otpSendRateLimit = redis
   ? new Ratelimit({
       redis,
-      limiter: Ratelimit.slidingWindow(5, "15 m"),
-      prefix: "ratelimit:login",
+      limiter: Ratelimit.slidingWindow(3, "15 m"),
+      prefix: "ratelimit:otp-send",
     })
   : { limit: async () => ({ success: true }) };
 
-// 3 registration attempts per hour per IP
-export const registerRateLimit = redis
+// 5 OTP verification attempts per phone per 15 minutes
+export const otpVerifyRateLimit = redis
   ? new Ratelimit({
       redis,
-      limiter: Ratelimit.slidingWindow(3, "1 h"),
-      prefix: "ratelimit:register",
+      limiter: Ratelimit.slidingWindow(5, "15 m"),
+      prefix: "ratelimit:otp-verify",
     })
   : { limit: async () => ({ success: true }) };
 

@@ -27,7 +27,7 @@ export async function createGroup(userId: string, name: string) {
   await db.insert(members).values({
     id: randomUUID(),
     groupId: id,
-    name: user.name ?? user.email,
+    name: user.name ?? user.phoneNumber ?? "Unknown",
     userId,
   });
 

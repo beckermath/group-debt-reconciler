@@ -29,7 +29,7 @@ export function SettleUpButton({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         render={
-          <Button size="sm">
+          <Button size="sm" className="bg-accent text-accent-foreground shadow-[inset_0_1px_0_oklch(1_0_0/15%)] hover:bg-accent/90 hover:shadow-[inset_0_1px_0_oklch(1_0_0/15%),0_2px_8px_oklch(0.58_0.26_330/25%)] dark:hover:shadow-[inset_0_1px_0_oklch(1_0_0/15%),0_2px_12px_oklch(0.60_0.20_332/30%)]">
             Settle Up
           </Button>
         }

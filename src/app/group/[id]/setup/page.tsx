@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InviteButton } from "@/components/invite-button";
 import { renameGroup, addMembersInBatch } from "@/app/actions";
-import { X, LoaderCircle } from "lucide-react";
+import { X, LoaderCircle, ChevronLeft } from "lucide-react";
 
 export default function GroupSetupPage() {
   const { id } = useParams<{ id: string }>();
@@ -81,9 +81,10 @@ export default function GroupSetupPage() {
       <div>
         <button
           onClick={() => router.push("/")}
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground cursor-pointer"
         >
-          &larr; All groups
+          <ChevronLeft className="size-4" />
+          All groups
         </button>
       </div>
 

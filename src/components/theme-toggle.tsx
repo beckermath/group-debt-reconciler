@@ -11,7 +11,11 @@ export function ThemeToggle() {
     <Button
       variant="ghost"
       size="icon"
-      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+      onClick={() => {
+        document.documentElement.classList.add("theme-transitioning");
+        setTheme(resolvedTheme === "dark" ? "light" : "dark");
+        setTimeout(() => document.documentElement.classList.remove("theme-transitioning"), 400);
+      }}
       aria-label="Toggle theme"
     >
       <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />

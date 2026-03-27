@@ -14,6 +14,7 @@ import { InviteButton } from "@/components/invite-button";
 import { EditableGroupName } from "@/components/editable-group-name";
 import { SettleUpButton } from "@/components/settle-up-button";
 import { SettlementHistory } from "@/components/settlement-history";
+import { MemberAvatar } from "@/components/member-avatar";
 import { GroupDetailTabs, TabsList, TabsTrigger, TabsContent } from "@/components/group-detail-tabs";
 import { reconcile } from "@/lib/reconcile";
 import { computeBalances } from "@/lib/balances";
@@ -136,8 +137,12 @@ export default async function GroupPage({
     return (
       <div className="space-y-8">
         <div>
-          <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-            &larr; All groups
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <ChevronLeft className="size-4" />
+            All groups
           </Link>
           <div className="flex items-center justify-between gap-2 mt-1">
             <div className="min-w-0 flex-1">
@@ -414,20 +419,7 @@ export default async function GroupPage({
   );
 }
 
-function MemberAvatar({ name }: { name: string }) {
-  const initials = name
-    .split(/\s+/)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-
-  return (
-    <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-      {initials}
-    </span>
-  );
-}
+// MemberAvatar is imported from @/components/member-avatar
 
 function BalanceBar({
   balance,
@@ -446,13 +438,13 @@ function BalanceBar({
     <div className="mt-1.5 flex h-1.5 w-full items-center rounded-full bg-muted">
       {isPositive ? (
         <div
-          className="h-full rounded-full bg-emerald-500/70 transition-all duration-500"
+          className="h-full rounded-full bg-owed/70 transition-all duration-500"
           style={{ width: `${widthPercent}%` }}
         />
       ) : (
         <div className="flex h-full w-full justify-end">
           <div
-            className="h-full rounded-full bg-red-400/60 transition-all duration-500"
+            className="h-full rounded-full bg-owes/60 transition-all duration-500"
             style={{ width: `${widthPercent}%` }}
           />
         </div>
@@ -486,7 +478,7 @@ function ReconciliationCard({
   );
 
   return (
-    <Card className="border-primary/20 bg-gradient-to-br from-primary/[0.03] to-transparent">
+    <Card className="border-primary/20 bg-gradient-to-br from-primary/[0.04] to-transparent">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Balances</CardTitle>
@@ -516,10 +508,10 @@ function ReconciliationCard({
                         <span
                           className={`text-sm font-semibold tabular-nums ${
                             balance > 0
-                              ? "text-emerald-600 dark:text-emerald-400"
+                              ? "text-owed"
                               : balance < 0
-                                ? "text-red-600 dark:text-red-400"
-                                : "text-muted-foreground"
+                                ? "text-owes"
+                                : "text-settled"
                           }`}
                         >
                           {balance > 0 ? "+" : ""}
@@ -556,13 +548,21 @@ function ReconciliationCard({
 
         {/* Transfers */}
         {!hasTransfers ? (
-          <div className="flex flex-col items-center gap-2 py-4 text-center">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
+          <div className="relative flex flex-col items-center gap-3 py-6 text-center overflow-hidden">
+            {/* CSS celebration particles */}
+            <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+              <span className="absolute left-1/4 bottom-1/2 h-1.5 w-1.5 rounded-full bg-accent/60 animate-[float-up_1.8s_ease-out_forwards]" style={{ animationDelay: "0s" }} />
+              <span className="absolute left-1/2 bottom-1/3 h-1 w-1 rounded-full bg-primary/50 animate-[float-up_2s_ease-out_forwards]" style={{ animationDelay: "0.2s" }} />
+              <span className="absolute left-2/3 bottom-1/2 h-1.5 w-1.5 rounded-full bg-owed/50 animate-[float-up_1.6s_ease-out_forwards]" style={{ animationDelay: "0.4s" }} />
+              <span className="absolute left-[40%] bottom-1/4 h-1 w-1 rounded-full bg-accent/40 animate-[float-up_2.2s_ease-out_forwards]" style={{ animationDelay: "0.1s" }} />
+              <span className="absolute left-[60%] bottom-1/3 h-1.5 w-1.5 rounded-full bg-primary/40 animate-[float-up_1.9s_ease-out_forwards]" style={{ animationDelay: "0.3s" }} />
+            </div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-owed/10 shadow-[0_0_20px_oklch(0.60_0.14_155/15%)] dark:shadow-[0_0_24px_oklch(0.60_0.14_155/20%)]">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 20 20"
                 fill="currentColor"
-                className="h-5 w-5 text-emerald-600 dark:text-emerald-400"
+                className="h-6 w-6 text-owed"
               >
                 <path
                   fillRule="evenodd"
@@ -572,7 +572,7 @@ function ReconciliationCard({
               </svg>
             </div>
             <div>
-              <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+              <p className="text-sm font-semibold text-owed" role="status">
                 All settled up!
               </p>
               <p className="text-xs text-muted-foreground">

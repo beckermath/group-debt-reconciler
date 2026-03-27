@@ -21,10 +21,11 @@ export async function renameGroup(groupId: string, newName: string) {
   }
 }
 
-export async function createGroup() {
+export async function createGroup(formData: FormData) {
+  const name = (formData.get("name") as string)?.trim() || "New Group";
   try {
     const { userId } = await requireAuthWithRateLimit();
-    const { groupId } = await groupService.createGroup(userId, "New Group");
+    const { groupId } = await groupService.createGroup(userId, name);
     redirect(`/group/${groupId}/setup`);
   } catch (error) {
     if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;

@@ -16,14 +16,10 @@ async function registerAndLogin(page: import("@playwright/test").Page) {
 async function createGroup(page: import("@playwright/test").Page, name: string) {
   await page.getByRole("button", { name: "Create group" }).first().click();
   await page.getByLabel("Group name").fill(name);
-  // Click the submit button inside the dialog
   await page.locator("[data-slot='dialog-content']").getByRole("button", { name: "Create group" }).click();
+  // Lands on setup page — navigate directly to group detail
   await expect(page).toHaveURL(/\/group\/.*\/setup/, { timeout: 10000 });
-  // Complete the setup by clicking "Continue"
-  // Get the group ID from the setup URL and navigate to the group page
-  await expect(page).toHaveURL(/\/group\/.*\/setup/, { timeout: 10000 });
-  const setupUrl = page.url();
-  const groupUrl = setupUrl.replace("/setup", "");
+  const groupUrl = page.url().replace("/setup", "");
   await page.goto(groupUrl);
   await expect(page).toHaveURL(/\/group\/(?!.*setup)/, { timeout: 10000 });
 }
@@ -53,7 +49,7 @@ test.describe("Groups", () => {
     // Click on Members tab to access the add member form
     await page.getByRole("tab", { name: /Members/ }).click();
     await page.getByPlaceholder("Member name").fill("Guest Dave");
-    await page.getByRole("button", { name: "Add" }).click();
+    await page.getByRole("button", { name: "Add", exact: true }).click();
 
     await expect(page.getByText("Guest Dave").first()).toBeVisible({ timeout: 10000 });
     await expect(page.getByText("guest").first()).toBeVisible();

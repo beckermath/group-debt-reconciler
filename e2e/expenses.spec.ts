@@ -14,19 +14,16 @@ async function setupGroupWithMembers(page: import("@playwright/test").Page) {
   await page.getByRole("button", { name: "Create group" }).first().click();
   await page.getByLabel("Group name").fill("Test Group");
   await page.locator("[data-slot='dialog-content']").getByRole("button", { name: "Create group" }).click();
+  // Lands on setup page — navigate directly to group detail
   await expect(page).toHaveURL(/\/group\/.*\/setup/, { timeout: 10000 });
-  // Complete setup — navigate to group page
-  // Get the group ID from the setup URL and navigate to the group page
-  await expect(page).toHaveURL(/\/group\/.*\/setup/, { timeout: 10000 });
-  const setupUrl = page.url();
-  const groupUrl = setupUrl.replace("/setup", "");
+  const groupUrl = page.url().replace("/setup", "");
   await page.goto(groupUrl);
   await expect(page).toHaveURL(/\/group\/(?!.*setup)/, { timeout: 10000 });
 
   // Add a second member via Members tab
   await page.getByRole("tab", { name: /Members/ }).click();
   await page.getByPlaceholder("Member name").fill("Bob");
-  await page.getByRole("button", { name: "Add" }).click();
+  await page.getByRole("button", { name: "Add", exact: true }).click();
   await expect(page.getByText("Bob").first()).toBeVisible({ timeout: 10000 });
 
   // Switch to Expenses tab

@@ -46,23 +46,6 @@ export async function linkIdentity(
 }
 
 /**
- * Remove an identity link from a member.
- */
-export async function unlinkIdentity(identityId: string, memberId: string) {
-  const [identity] = await db
-    .select({ memberId: memberIdentities.memberId })
-    .from(memberIdentities)
-    .where(eq(memberIdentities.id, identityId));
-
-  if (!identity || identity.memberId !== memberId) {
-    return { error: "Identity not found" };
-  }
-
-  await db.delete(memberIdentities).where(eq(memberIdentities.id, identityId));
-  return {};
-}
-
-/**
  * Find a member in a group by their external identity.
  * Returns the member ID if found, null otherwise.
  */
@@ -85,29 +68,6 @@ export async function resolveIdentityInGroup(
     );
 
   return results[0]?.memberId ?? null;
-}
-
-/**
- * Find all members across all groups linked to an external identity.
- */
-export async function findMembersByIdentity(identity: ExternalIdentity) {
-  const normalized = normalizeIdentity(identity);
-
-  return db
-    .select({
-      memberId: memberIdentities.memberId,
-      groupId: members.groupId,
-      memberName: members.name,
-      provider: memberIdentities.provider,
-    })
-    .from(memberIdentities)
-    .innerJoin(members, eq(memberIdentities.memberId, members.id))
-    .where(
-      and(
-        eq(memberIdentities.provider, normalized.provider),
-        eq(memberIdentities.providerIdentity, normalized.providerIdentity)
-      )
-    );
 }
 
 /**

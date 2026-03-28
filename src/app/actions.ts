@@ -86,20 +86,6 @@ export async function addMembersInBatch(groupId: string, names: string[]) {
   }
 }
 
-export async function addMember(formData: FormData) {
-  const groupId = formData.get("groupId") as string;
-  const name = formData.get("name") as string;
-  if (!name?.trim() || !groupId) return;
-  try {
-    await requireGroupAccess(groupId);
-    await memberService.addMember(groupId, name);
-    redirect(`/group/${groupId}?tab=members`);
-  } catch (error) {
-    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
-    console.error(error);
-  }
-}
-
 export async function addMemberQuiet(groupId: string, name: string): Promise<{ error?: string }> {
   if (!name?.trim() || !groupId) return { error: "Name is required" };
   try {

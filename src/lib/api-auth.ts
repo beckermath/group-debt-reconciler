@@ -66,17 +66,3 @@ export async function authenticateRequest(
   return UNAUTHORIZED();
 }
 
-/**
- * Helper to use in route handlers. Returns the user or sends a 401 response.
- */
-export async function requireApiAuth(
-  request: NextRequest
-): Promise<{ user: ApiUser } | { response: NextResponse }> {
-  const result = await authenticateRequest(request);
-
-  if (result instanceof NextResponse) {
-    return { response: result };
-  }
-
-  return { user: result };
-}

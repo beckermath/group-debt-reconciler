@@ -1,8 +1,12 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { signIn } from "@/lib/auth";
 import { requireAuthWithRateLimit, requireGroupAccess, requireGroupOwner } from "@/lib/auth-helpers";
 import { inviteRateLimit, searchRateLimit, directInviteRateLimit } from "@/lib/rate-limit";
+import { db } from "@/db";
+import { users } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import * as groupService from "@/services/group-service";
 import * as memberService from "@/services/member-service";
 import * as expenseService from "@/services/expense-service";
@@ -11,6 +15,36 @@ import * as inviteService from "@/services/invite-service";
 import * as directInviteService from "@/services/direct-invite-service";
 import * as userSearchService from "@/services/user-search-service";
 import type { SplitMode } from "@/lib/splits";
+
+// --- Dev-only account switcher ---
+
+export async function devSwitchUser(phoneNumber: string): Promise<{ error?: string }> {
+  if (process.env.NODE_ENV === "production") return { error: "Not available" };
+  if (!phoneNumber) return { error: "Phone number required" };
+
+  const [user] = await db
+    .select({ id: users.id, phoneNumber: users.phoneNumber })
+    .from(users)
+    .where(eq(users.phoneNumber, phoneNumber));
+
+  if (!user || !user.phoneNumber) return { error: "User not found. Run npm run seed first." };
+
+  try {
+    await signIn("credentials", {
+      phoneNumber: user.phoneNumber,
+      userId: user.id,
+      redirect: false,
+    });
+  } catch (error) {
+    if ((error as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+      // Expected — credentials provider may throw redirect even with redirect:false
+    } else {
+      return { error: "Sign in failed" };
+    }
+  }
+
+  return {};
+}
 
 export async function renameGroup(groupId: string, newName: string) {
   if (!groupId || !newName?.trim()) return;

@@ -4,6 +4,7 @@ import { useState, useRef, useTransition, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { renameGroup, addMembersInBatch, searchUsers, sendDirectInvite, createInviteLink } from "@/app/actions";
 import { X, LoaderCircle, ChevronLeft, Search, Check, Link2, Copy } from "lucide-react";
@@ -197,8 +198,8 @@ export default function GroupSetupPage() {
             )}
           </div>
 
-          {/* Add people */}
-          <div className="space-y-3">
+          {/* Add people — matches AddPeopleDialog layout */}
+          <div className="space-y-4">
             <label className="text-sm font-medium">
               Who&apos;s splitting expenses?
             </label>
@@ -214,6 +215,7 @@ export default function GroupSetupPage() {
               />
             </div>
 
+            {/* Search results */}
             {searching && (
               <div className="flex items-center justify-center py-2">
                 <LoaderCircle className="size-4 animate-spin text-muted-foreground" />
@@ -254,22 +256,30 @@ export default function GroupSetupPage() {
               </p>
             )}
 
+            {/* Divider */}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-card px-2 text-muted-foreground">or</span>
+              </div>
+            </div>
+
             {/* Add guest by name */}
-            <div className="flex gap-2">
-              <Input
-                value={currentName}
-                onChange={(e) => setCurrentName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addGuestToList(); } }}
-                placeholder="Or type a name to add as guest"
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={addGuestToList}
-                disabled={!currentName.trim()}
-              >
-                Add
-              </Button>
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Add someone without a Rekn account</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={currentName}
+                  onChange={(e) => setCurrentName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addGuestToList(); } }}
+                  placeholder="Guest name"
+                />
+                <Button type="button" variant="secondary" onClick={addGuestToList} disabled={!currentName.trim()}>
+                  Add
+                </Button>
+              </div>
             </div>
 
             {/* Member list */}

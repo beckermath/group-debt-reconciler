@@ -1,24 +1,9 @@
 import { test, expect } from "@playwright/test";
+import { registerAndLogin, createGroup } from "./helpers";
 
 async function setupGroupWithMembers(page: import("@playwright/test").Page) {
-  const email = `e2e-exp-${Date.now()}@rekn.test`;
-  await page.goto("/register");
-  await page.getByLabel("Name").fill("Expense Tester");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password", { exact: true }).fill("testpass123");
-  await page.getByLabel("Confirm password").fill("testpass123");
-  await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page).toHaveURL("/", { timeout: 10000 });
-
-  // Create group via dialog
-  await page.getByRole("button", { name: "Create group" }).first().click();
-  await page.getByLabel("Group name").fill("Test Group");
-  await page.locator("[data-slot='dialog-content']").getByRole("button", { name: "Create group" }).click();
-  // Lands on setup page — navigate directly to group detail
-  await expect(page).toHaveURL(/\/group\/.*\/setup/, { timeout: 10000 });
-  const groupUrl = page.url().replace("/setup", "");
-  await page.goto(groupUrl);
-  await expect(page).toHaveURL(/\/group\/(?!.*setup)/, { timeout: 10000 });
+  await registerAndLogin(page, "Expense Tester");
+  await createGroup(page, "Test Group");
 
   // Add a second member via Members tab
   await page.getByRole("tab", { name: /Members/ }).click();
@@ -55,7 +40,6 @@ test.describe("Expenses", () => {
     await setupGroupWithMembers(page);
     await addExpenseViaDialog(page, "Groceries", "100");
 
-    // Should show balances in the top card
     await expect(page.getByText("Settle Up")).toBeVisible({ timeout: 10000 });
     await expect(page.getByText("$50.00").first()).toBeVisible({ timeout: 10000 });
   });
@@ -74,10 +58,8 @@ test.describe("Expenses", () => {
     await addExpenseViaDialog(page, "Original", "30");
     await expect(page.getByText("Original")).toBeVisible({ timeout: 10000 });
 
-    // Click Edit
     await page.getByRole("button", { name: "Edit" }).click();
 
-    // Update description in the edit dialog
     const dialog = page.locator("[data-slot='dialog-content']");
     await dialog.getByLabel("Description").clear();
     await dialog.getByLabel("Description").fill("Updated");

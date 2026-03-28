@@ -13,14 +13,14 @@ export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+  if (!session?.user?.id) redirect("/phone");
 
   const [user] = await db
     .select()
     .from(users)
     .where(eq(users.id, session.user.id));
 
-  if (!user) redirect("/login");
+  if (!user) redirect("/phone");
 
   return (
     <div className="space-y-8">
@@ -40,7 +40,7 @@ export default async function SettingsPage() {
           <CardTitle>Profile</CardTitle>
         </CardHeader>
         <CardContent>
-          <ProfileForm name={user.name ?? ""} email={user.email} />
+          <ProfileForm name={user.name ?? ""} phoneNumber={user.phoneNumber ?? ""} />
         </CardContent>
       </Card>
 

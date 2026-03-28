@@ -12,7 +12,7 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   if (auth instanceof Response) return auth;
 
   const [user] = await db
-    .select({ id: users.id, name: users.name, email: users.email })
+    .select({ id: users.id, name: users.name, phoneNumber: users.phoneNumber, email: users.email })
     .from(users)
     .where(eq(users.id, auth.user.userId));
 

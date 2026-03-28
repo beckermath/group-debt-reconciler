@@ -3,8 +3,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import * as groupService from "@/services/group-service";
+import * as directInviteService from "@/services/direct-invite-service";
 import type { GroupSummary } from "@/services/group-service";
 import { CreateGroupDialog } from "@/components/create-group-dialog";
+import { PendingInvites } from "@/components/pending-invites";
 import { MemberAvatar } from "@/components/member-avatar";
 import { Users, Receipt, ArrowRight } from "lucide-react";
 
@@ -12,9 +14,10 @@ export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+  if (!session?.user?.id) redirect("/phone");
 
   const groups = await groupService.getUserGroupSummaries(session.user.id);
+  const pendingInvites = await directInviteService.getPendingInvitesForUser(session.user.id);
 
   // Compute global balance
   const totalOwed = groups.reduce(
@@ -72,6 +75,9 @@ export default async function Home() {
           <p className="text-sm font-semibold text-owed">All settled up across all groups</p>
         </div>
       )}
+
+      {/* Pending invites */}
+      <PendingInvites invites={pendingInvites} />
 
       {/* Group list */}
       {groups.length === 0 ? (

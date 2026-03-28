@@ -30,7 +30,7 @@ export async function deleteAccount(formData: FormData) {
     const { userId } = await requireAuth();
     await userService.deleteAccount(userId);
     await signOut({ redirect: false });
-    redirect("/login");
+    redirect("/phone");
   } catch (error) {
     if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
     console.error(error);

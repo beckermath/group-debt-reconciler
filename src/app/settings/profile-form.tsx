@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { SubmitButton } from "@/components/submit-button";
 import { updateProfile } from "./actions";
 
-export function ProfileForm({ name, email }: { name: string; email: string }) {
+export function ProfileForm({ name, phoneNumber }: { name: string; phoneNumber: string }) {
   const [state, action] = useActionState(updateProfile, null);
 
   return (
@@ -17,16 +17,16 @@ export function ProfileForm({ name, email }: { name: string; email: string }) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
-        <Input id="email" value={email} disabled className="opacity-60" />
-        <p className="text-xs text-muted-foreground">Email cannot be changed</p>
+        <Label htmlFor="phone">Phone number</Label>
+        <Input id="phone" value={phoneNumber} disabled className="opacity-60" />
+        <p className="text-xs text-muted-foreground">Phone number cannot be changed</p>
       </div>
 
       {state?.error && (
         <p className="text-sm text-destructive">{state.error}</p>
       )}
       {"success" in (state ?? {}) && (
-        <p className="text-sm text-green-600">{(state as any).success}</p>
+        <p className="text-sm text-owed">{(state as { success: string }).success}</p>
       )}
 
       <SubmitButton>Save</SubmitButton>

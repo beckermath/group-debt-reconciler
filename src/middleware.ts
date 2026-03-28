@@ -10,14 +10,12 @@ export async function middleware(request: NextRequest) {
   });
 
   if (!token) {
-    // For invite pages, redirect to login with a callback URL
+    const phoneUrl = new URL("/phone", request.url);
+    // For invite pages, redirect with callback URL
     if (request.nextUrl.pathname.startsWith("/invite/")) {
-      const loginUrl = new URL("/login", request.url);
-      loginUrl.searchParams.set("callbackUrl", request.nextUrl.pathname);
-      return NextResponse.redirect(loginUrl);
+      phoneUrl.searchParams.set("callbackUrl", request.nextUrl.pathname);
     }
-    const loginUrl = new URL("/login", request.url);
-    return NextResponse.redirect(loginUrl);
+    return NextResponse.redirect(phoneUrl);
   }
 
   return NextResponse.next();
@@ -25,6 +23,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!login|register|api/auth|api/v1|_next/static|_next/image|favicon.ico).*)",
+    "/((?!phone|api/auth|api/v1|_next/static|_next/image|favicon.ico).*)",
   ],
 };

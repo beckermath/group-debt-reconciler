@@ -77,23 +77,28 @@ export async function acceptInvite(code: string, userId: string) {
     return { error: "This invite has reached its maximum uses" };
   }
 
-  // Add to groupMembers (access control)
+  await addUserToGroup(invite.groupId, userId);
+  return { groupId: invite.groupId };
+}
+
+/**
+ * Add a user to a group's membership and expense participants.
+ * Shared by link-based invites and direct invites.
+ */
+export async function addUserToGroup(groupId: string, userId: string) {
   await db.insert(groupMembers).values({
     id: randomUUID(),
-    groupId: invite.groupId,
+    groupId,
     userId,
     role: "member",
     joinedAt: new Date(),
   });
 
-  // Add to members (expense participant)
   const [user] = await db.select().from(users).where(eq(users.id, userId));
   await db.insert(members).values({
     id: randomUUID(),
-    groupId: invite.groupId,
-    name: user.name ?? user.email,
+    groupId,
+    name: user.name ?? user.phoneNumber ?? "Unknown",
     userId,
   });
-
-  return { groupId: invite.groupId };
 }

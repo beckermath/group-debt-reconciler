@@ -19,7 +19,7 @@ export function UserMenu({ name }: { name: string }) {
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => signOut({ callbackUrl: "/login" })}
+        onClick={() => signOut({ callbackUrl: "/phone" })}
       >
         Sign out
       </Button>

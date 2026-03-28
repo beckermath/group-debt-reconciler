@@ -66,6 +66,18 @@ export async function addMember(formData: FormData) {
   }
 }
 
+export async function addMemberQuiet(groupId: string, name: string): Promise<{ error?: string }> {
+  if (!name?.trim() || !groupId) return { error: "Name is required" };
+  try {
+    await requireGroupAccess(groupId);
+    await memberService.addMember(groupId, name);
+    return {};
+  } catch (error) {
+    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    return { error: "Failed to add member" };
+  }
+}
+
 export async function deleteMember(formData: FormData) {
   const id = formData.get("id") as string;
   const groupId = formData.get("groupId") as string;

@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useRef, useTransition, useEffect } from "react";
+import { useState, useRef, useTransition, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { InviteButton } from "@/components/invite-button";
-import { renameGroup, addMembersInBatch } from "@/app/actions";
-import { X, LoaderCircle, ChevronLeft } from "lucide-react";
+import { renameGroup, addMembersInBatch, searchUsers, sendDirectInvite, createInviteLink } from "@/app/actions";
+import { X, LoaderCircle, ChevronLeft, Search, Check, Link2, Copy } from "lucide-react";
+
+type SearchResult = { id: string; name: string; maskedPhone: string };
 
 export default function GroupSetupPage() {
   const { id } = useParams<{ id: string }>();
@@ -15,12 +16,26 @@ export default function GroupSetupPage() {
 
   const [groupName, setGroupName] = useState("New Group");
   const [isEditingName, setIsEditingName] = useState(true);
-  const [memberNames, setMemberNames] = useState<string[]>([]);
+  const [guestNames, setGuestNames] = useState<string[]>([]);
+  const [invitedUsers, setInvitedUsers] = useState<{ id: string; name: string }[]>([]);
   const [currentName, setCurrentName] = useState("");
   const [isPending, startTransition] = useTransition();
 
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [sentIds, setSentIds] = useState<Set<string>>(new Set());
+  const [sendingId, setSendingId] = useState<string | null>(null);
+
+  // Invite link state
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const [linkLoading, setLinkLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
   const nameInputRef = useRef<HTMLInputElement>(null);
-  const memberInputRef = useRef<HTMLInputElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const queryRef = useRef(searchQuery);
 
   useEffect(() => {
     nameInputRef.current?.focus();
@@ -43,38 +58,96 @@ export default function GroupSetupPage() {
     if (e.key === "Enter") {
       e.preventDefault();
       nameInputRef.current?.blur();
-      memberInputRef.current?.focus();
     }
   }
 
-  function addMemberToList() {
+  // Search
+  const handleSearch = useCallback(
+    (value: string) => {
+      setSearchQuery(value);
+      queryRef.current = value;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+
+      if (value.trim().length < 3) {
+        setSearchResults([]);
+        setSearching(false);
+        return;
+      }
+
+      setSearching(true);
+      debounceRef.current = setTimeout(async () => {
+        const res = await searchUsers(value.trim(), id);
+        if (queryRef.current === value) {
+          setSearchResults(res.results ?? []);
+          setSearching(false);
+        }
+      }, 300);
+    },
+    [id]
+  );
+
+  async function handleInviteUser(user: SearchResult) {
+    setSendingId(user.id);
+    const formData = new FormData();
+    formData.set("groupId", id);
+    formData.set("userId", user.id);
+    const result = await sendDirectInvite(formData);
+    setSendingId(null);
+    if (!result?.error) {
+      setSentIds((prev) => new Set([...prev, user.id]));
+      setInvitedUsers((prev) => [...prev, { id: user.id, name: user.name }]);
+      setSearchQuery("");
+      setSearchResults([]);
+    }
+  }
+
+  // Guest names
+  function addGuestToList() {
     const trimmed = currentName.trim();
     if (!trimmed) return;
-    setMemberNames((prev) => [...prev, trimmed]);
+    setGuestNames((prev) => [...prev, trimmed]);
     setCurrentName("");
-    memberInputRef.current?.focus();
   }
 
-  function removeMemberFromList(index: number) {
-    setMemberNames((prev) => prev.filter((_, i) => i !== index));
+  function removeGuest(index: number) {
+    setGuestNames((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function handleMemberKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      addMemberToList();
+  function removeInvited(userId: string) {
+    setInvitedUsers((prev) => prev.filter((u) => u.id !== userId));
+  }
+
+  // Invite link
+  async function handleGenerateLink() {
+    setLinkLoading(true);
+    const formData = new FormData();
+    formData.set("groupId", id);
+    const result = await createInviteLink(formData);
+    if (result && "code" in result) {
+      setInviteUrl(`${window.location.origin}/invite/${result.code}`);
     }
+    setLinkLoading(false);
   }
 
+  async function handleCopy() {
+    if (!inviteUrl) return;
+    await navigator.clipboard.writeText(inviteUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  // Finish
   function handleFinish() {
     startTransition(async () => {
-      if (memberNames.length > 0) {
-        await addMembersInBatch(id, memberNames);
+      if (guestNames.length > 0) {
+        await addMembersInBatch(id, guestNames);
       } else {
         router.push(`/group/${id}`);
       }
     });
   }
+
+  const totalAdded = guestNames.length + invitedUsers.length;
 
   return (
     <div className="space-y-6 max-w-lg mx-auto">
@@ -93,6 +166,7 @@ export default function GroupSetupPage() {
           <CardTitle>Create your group</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Group name */}
           <div className="space-y-2">
             <label className="text-sm font-medium" htmlFor="group-name">
               Group name
@@ -123,42 +197,106 @@ export default function GroupSetupPage() {
             )}
           </div>
 
+          {/* Add people */}
           <div className="space-y-3">
-            <label className="text-sm font-medium" htmlFor="member-name">
-              Who's splitting expenses?
+            <label className="text-sm font-medium">
+              Who&apos;s splitting expenses?
             </label>
+
+            {/* Search existing users */}
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name or phone..."
+                value={searchQuery}
+                onChange={(e) => handleSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+
+            {searching && (
+              <div className="flex items-center justify-center py-2">
+                <LoaderCircle className="size-4 animate-spin text-muted-foreground" />
+              </div>
+            )}
+
+            {searchResults.length > 0 && (
+              <ul className="divide-y rounded-md border">
+                {searchResults.map((user) => {
+                  const isSent = sentIds.has(user.id);
+                  const isSending = sendingId === user.id;
+                  return (
+                    <li key={user.id} className="flex items-center justify-between px-3 py-2 gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{user.name}</p>
+                        <p className="text-xs text-muted-foreground">{user.maskedPhone}</p>
+                      </div>
+                      {isSent ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-owed shrink-0">
+                          <Check className="size-3.5" />
+                          Invited
+                        </span>
+                      ) : (
+                        <Button variant="outline" size="sm" onClick={() => handleInviteUser(user)} disabled={isSending}>
+                          {isSending && <LoaderCircle className="size-3.5 animate-spin" />}
+                          Invite
+                        </Button>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            {searchQuery.length >= 3 && !searching && searchResults.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center">
+                No users found for &ldquo;{searchQuery}&rdquo;
+              </p>
+            )}
+
+            {/* Add guest by name */}
             <div className="flex gap-2">
               <Input
-                id="member-name"
-                ref={memberInputRef}
                 value={currentName}
                 onChange={(e) => setCurrentName(e.target.value)}
-                onKeyDown={handleMemberKeyDown}
-                placeholder="Name"
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addGuestToList(); } }}
+                placeholder="Or type a name to add as guest"
               />
               <Button
                 type="button"
                 variant="secondary"
-                onClick={addMemberToList}
+                onClick={addGuestToList}
                 disabled={!currentName.trim()}
               >
                 Add
               </Button>
             </div>
 
-            {memberNames.length > 0 && (
+            {/* Member list */}
+            {(guestNames.length > 0 || invitedUsers.length > 0) && (
               <ul className="space-y-1">
-                {memberNames.map((name, index) => (
-                  <li
-                    key={index}
-                    className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
-                  >
-                    <span>{name}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeMemberFromList(index)}
-                      className="text-muted-foreground hover:text-foreground transition-colors"
-                    >
+                {invitedUsers.map((user) => (
+                  <li key={user.id} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+                    <div className="flex items-center gap-1.5">
+                      <span>{user.name}</span>
+                      <span className="inline-flex items-center rounded-full bg-primary/10 px-1.5 py-0.5 text-[0.65rem] font-medium text-primary">
+                        invited
+                      </span>
+                    </div>
+                    <button type="button" onClick={() => removeInvited(user.id)} className="text-muted-foreground hover:text-foreground transition-colors">
+                      <X className="size-4" />
+                    </button>
+                  </li>
+                ))}
+                {guestNames.map((name, index) => (
+                  <li key={index} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+                    <div className="flex items-center gap-1.5">
+                      <span>{name}</span>
+                      <span className="inline-flex items-center rounded-full bg-muted px-1.5 py-0.5 text-[0.65rem] font-medium text-muted-foreground">
+                        guest
+                      </span>
+                    </div>
+                    <button type="button" onClick={() => removeGuest(index)} className="text-muted-foreground hover:text-foreground transition-colors">
                       <X className="size-4" />
                     </button>
                   </li>
@@ -166,9 +304,9 @@ export default function GroupSetupPage() {
               </ul>
             )}
 
-            {memberNames.length > 0 && (
+            {totalAdded > 0 && (
               <p className="text-xs text-muted-foreground">
-                {memberNames.length} member{memberNames.length !== 1 && "s"} added
+                {totalAdded} {totalAdded === 1 ? "person" : "people"} added
               </p>
             )}
           </div>
@@ -182,23 +320,32 @@ export default function GroupSetupPage() {
         size="lg"
       >
         {isPending && <LoaderCircle className="size-4 animate-spin" />}
-        {memberNames.length > 0 ? "Start splitting expenses" : "Skip for now"}
+        {totalAdded > 0 ? "Start splitting expenses" : "Skip for now"}
       </Button>
 
+      {/* Invite link */}
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t" />
         </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background px-2 text-muted-foreground">
-            Or invite people with a link
-          </span>
+        <div className="relative flex justify-center text-xs">
+          <span className="bg-background px-2 text-muted-foreground">or share a link</span>
         </div>
       </div>
 
-      <div className="flex justify-center">
-        <InviteButton groupId={id} />
-      </div>
+      {inviteUrl ? (
+        <div className="flex gap-2">
+          <Input value={inviteUrl} readOnly className="text-xs" />
+          <Button variant="outline" size="sm" onClick={handleCopy}>
+            {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+          </Button>
+        </div>
+      ) : (
+        <Button variant="ghost" size="sm" className="w-full" onClick={handleGenerateLink} disabled={linkLoading}>
+          <Link2 className="size-4" data-icon="inline-start" />
+          {linkLoading ? "Generating..." : "Generate invite link"}
+        </Button>
+      )}
     </div>
   );
 }

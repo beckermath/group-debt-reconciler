@@ -1,15 +1,11 @@
 import { test, expect } from "@playwright/test";
-import { registerAndLogin, createGroup } from "./helpers";
+import { registerAndLogin, createGroup, addGuestMember } from "./helpers";
 
 async function setupGroupWithMembers(page: import("@playwright/test").Page) {
   await registerAndLogin(page, "Expense Tester");
   await createGroup(page, "Test Group");
 
-  // Add a second member via Members tab
-  await page.getByRole("tab", { name: /Members/ }).click();
-  await page.getByPlaceholder("Member name").fill("Bob");
-  await page.getByRole("button", { name: "Add", exact: true }).click();
-  await expect(page.getByText("Bob").first()).toBeVisible({ timeout: 10000 });
+  await addGuestMember(page, "Bob");
 
   // Switch to Expenses tab
   await page.getByRole("tab", { name: /Expenses/ }).click();

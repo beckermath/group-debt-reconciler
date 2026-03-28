@@ -59,3 +59,23 @@ export async function createGroup(
   await page.goto(groupUrl);
   await expect(page).toHaveURL(/\/group\/(?!.*setup)/, { timeout: 10000 });
 }
+
+/**
+ * Add a guest member via the "Add people" dialog on the Members tab.
+ */
+export async function addGuestMember(
+  page: import("@playwright/test").Page,
+  name: string
+) {
+  await page.getByRole("tab", { name: /Members/ }).click();
+  await page.getByRole("button", { name: "Add people" }).first().click();
+  const dialog = page.locator("[data-slot='dialog-content']");
+  await dialog.getByPlaceholder("Guest name").fill(name);
+  await dialog.getByRole("button", { name: "Add", exact: true }).click();
+  // Wait for success message in the dialog
+  await expect(dialog.getByText(`${name} added as guest`)).toBeVisible({ timeout: 10000 });
+  // Close the dialog
+  await page.keyboard.press("Escape");
+  // Wait for the member to appear on the page (router.refresh updates the data)
+  await expect(page.getByText(name).first()).toBeVisible({ timeout: 10000 });
+}

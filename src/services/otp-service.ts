@@ -6,8 +6,16 @@ import { sendSms } from "@/services/sms-service";
 
 const OTP_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_ATTEMPTS = 5;
+const isTest = process.env.PLAYWRIGHT_TEST === "1";
+const TEST_CODE = "000000";
 
 export async function generateOtp(phoneNumber: string): Promise<void> {
+  // In test mode, skip DB and SMS entirely — tests use static code "000000"
+  if (isTest) {
+    console.log(`[TEST OTP → ${phoneNumber}] ${TEST_CODE}`);
+    return;
+  }
+
   // Invalidate any existing unused OTPs for this phone
   const existing = await db
     .select({ id: otpCodes.id })
@@ -42,9 +50,26 @@ export async function verifyOtp(
   phoneNumber: string,
   inputCode: string
 ): Promise<VerifyResult> {
+  // In test mode, accept the static code without touching the DB
+  if (isTest) {
+    if (inputCode !== TEST_CODE) {
+      return { valid: false, error: "Incorrect code. Please try again." };
+    }
+
+    const [existingUser] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.phoneNumber, phoneNumber));
+
+    if (existingUser) {
+      return { valid: true, userId: existingUser.id, isNewUser: false };
+    }
+    return { valid: true, userId: null, isNewUser: true };
+  }
+
+  // Production OTP verification
   const now = new Date();
 
-  // Find the latest unexpired, unused OTP for this phone
   const [otp] = await db
     .select()
     .from(otpCodes)
@@ -71,13 +96,11 @@ export async function verifyOtp(
     return { valid: false, error: "Too many attempts. Please request a new code." };
   }
 
-  // Increment attempts before checking
   await db
     .update(otpCodes)
     .set({ attempts: otp.attempts + 1 })
     .where(eq(otpCodes.id, otp.id));
 
-  // Timing-safe comparison
   const inputBuffer = Buffer.from(inputCode.padEnd(6, "0"));
   const storedBuffer = Buffer.from(otp.code.padEnd(6, "0"));
 
@@ -85,10 +108,8 @@ export async function verifyOtp(
     return { valid: false, error: "Incorrect code. Please try again." };
   }
 
-  // Mark as used
   await db.update(otpCodes).set({ usedAt: now }).where(eq(otpCodes.id, otp.id));
 
-  // Look up existing user
   const [existingUser] = await db
     .select({ id: users.id })
     .from(users)

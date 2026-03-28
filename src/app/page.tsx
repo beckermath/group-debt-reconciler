@@ -5,10 +5,11 @@ import { redirect } from "next/navigation";
 import * as groupService from "@/services/group-service";
 import * as directInviteService from "@/services/direct-invite-service";
 import type { GroupSummary } from "@/services/group-service";
-import { CreateGroupDialog } from "@/components/create-group-dialog";
+import { SubmitButton } from "@/components/submit-button";
+import { createGroup } from "./actions";
 import { PendingInvites } from "@/components/pending-invites";
 import { MemberAvatar } from "@/components/member-avatar";
-import { Users, Receipt, ArrowRight } from "lucide-react";
+import { Plus, Users, Receipt, ArrowRight } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +46,12 @@ export default async function Home() {
             </p>
           )}
         </div>
-        <CreateGroupDialog />
+        <form action={createGroup}>
+          <SubmitButton>
+            <Plus className="size-4" />
+            Create group
+          </SubmitButton>
+        </form>
       </div>
 
       {/* Global balance summary */}
@@ -268,7 +274,12 @@ function EmptyState() {
           </div>
         </div>
 
-        <CreateGroupDialog />
+        <form action={createGroup}>
+          <SubmitButton>
+            <Plus className="size-4" />
+            Create group
+          </SubmitButton>
+        </form>
       </CardContent>
     </Card>
   );

@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { registerAndLogin, createGroup } from "./helpers";
+import { registerAndLogin, createGroup, addGuestMember } from "./helpers";
 
 test.describe("Groups", () => {
   test("can create a group and navigate to it", async ({ page }) => {
@@ -22,11 +22,7 @@ test.describe("Groups", () => {
     await registerAndLogin(page, "Group Tester");
     await createGroup(page, "Dinner Club");
 
-    await page.getByRole("tab", { name: /Members/ }).click();
-    await page.getByPlaceholder("Member name").fill("Guest Dave");
-    await page.getByRole("button", { name: "Add", exact: true }).click();
-
-    await expect(page.getByText("Guest Dave").first()).toBeVisible({ timeout: 10000 });
+    await addGuestMember(page, "Guest Dave");
     await expect(page.getByText("guest").first()).toBeVisible();
   });
 

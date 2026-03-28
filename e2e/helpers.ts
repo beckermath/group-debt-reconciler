@@ -10,7 +10,7 @@ export async function registerAndLogin(
   page: import("@playwright/test").Page,
   name: string = "E2E Tester"
 ) {
-  const phone = `+1555${Date.now().toString().slice(-7)}`;
+  const phone = `+1${Date.now().toString().slice(-10)}`;
 
   await page.goto("/phone");
   await page.getByLabel("Phone number").fill(phone);
@@ -35,17 +35,47 @@ export async function registerAndLogin(
 }
 
 /**
- * Create a group via the dialog and navigate to the group detail page.
+ * Create a group and navigate to the group detail page.
+ * Clicks "Create group" button → setup wizard → names the group → navigates to detail.
  */
 export async function createGroup(
   page: import("@playwright/test").Page,
   name: string
 ) {
+  // Click "Create group" — goes straight to setup wizard
   await page.getByRole("button", { name: "Create group" }).first().click();
-  await page.getByLabel("Group name").fill(name);
-  await page.locator("[data-slot='dialog-content']").getByRole("button", { name: "Create group" }).click();
   await expect(page).toHaveURL(/\/group\/.*\/setup/, { timeout: 10000 });
+
+  // Name the group in the setup wizard
+  const nameInput = page.getByLabel("Group name");
+  await nameInput.clear();
+  await nameInput.fill(name);
+  await nameInput.press("Enter");
+  // Wait for the rename to complete (blur triggers server action)
+  await page.waitForTimeout(1000);
+
+  // Navigate directly to the group detail page
   const groupUrl = page.url().replace("/setup", "");
   await page.goto(groupUrl);
   await expect(page).toHaveURL(/\/group\/(?!.*setup)/, { timeout: 10000 });
+}
+
+/**
+ * Add a guest member via the "Add people" dialog on the Members tab.
+ */
+export async function addGuestMember(
+  page: import("@playwright/test").Page,
+  name: string
+) {
+  await page.getByRole("tab", { name: /Members/ }).click();
+  await page.getByRole("button", { name: "Add people" }).first().click();
+  const dialog = page.locator("[data-slot='dialog-content']");
+  await dialog.getByPlaceholder("Guest name").fill(name);
+  await dialog.getByRole("button", { name: "Add", exact: true }).click();
+  // Wait for success message in the dialog
+  await expect(dialog.getByText(`${name} added as guest`)).toBeVisible({ timeout: 10000 });
+  // Close the dialog
+  await page.keyboard.press("Escape");
+  // Wait for the member to appear on the page (router.refresh updates the data)
+  await expect(page.getByText(name).first()).toBeVisible({ timeout: 10000 });
 }

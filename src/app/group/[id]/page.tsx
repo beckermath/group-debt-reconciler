@@ -4,14 +4,12 @@ import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { SubmitButton } from "@/components/submit-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { addMember, deleteExpense, deleteMember, restoreMember } from "@/app/actions";
+import { deleteExpense, deleteMember, restoreMember } from "@/app/actions";
 import { EditExpenseButton } from "@/components/edit-expense-button";
 import { AddExpenseDialog } from "@/components/add-expense-dialog";
 import { RemoveMemberButton } from "@/components/remove-member-button";
 import { DeleteGroupButton } from "@/components/delete-group-button";
-import { InviteButton } from "@/components/invite-button";
-import { DirectInviteDialog } from "@/components/direct-invite-dialog";
+import { AddPeopleDialog } from "@/components/add-people-dialog";
 import { EditableGroupName } from "@/components/editable-group-name";
 import { SettleUpButton } from "@/components/settle-up-button";
 import { SettlementHistory } from "@/components/settlement-history";
@@ -197,8 +195,7 @@ export default async function GroupPage({
             <EditableGroupName groupId={id} name={group.name} isOwner={isOwner} />
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <DirectInviteDialog groupId={id} />
-            <InviteButton groupId={id} />
+            <AddPeopleDialog groupId={id} />
             {isOwner && (
               <DeleteGroupButton
                 groupId={id}
@@ -321,15 +318,11 @@ export default async function GroupPage({
               <CardTitle>Members</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <form action={addMember} className="flex gap-2">
-                <input type="hidden" name="groupId" value={id} />
-                <Input name="name" placeholder="Member name" required />
-                <SubmitButton>Add</SubmitButton>
-              </form>
+              <AddPeopleDialog groupId={id} variant="inline" />
 
               {activeMembers.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  No members yet. Add some above.
+                  No members yet. Add people above.
                 </p>
               ) : (
                 <ul className="divide-y">

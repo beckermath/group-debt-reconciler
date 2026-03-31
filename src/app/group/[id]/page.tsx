@@ -341,13 +341,16 @@ export default async function GroupPage({
                             </span>
                           )}
                         </div>
-                        <RemoveMemberButton
-                          member={member}
-                          groupId={id}
-                          balanceCents={impact.balanceCents}
-                          expensesPaidCount={impact.expensesPaidCount}
-                          expensesSplitCount={impact.expensesSplitCount}
-                        />
+                        {/* Owner can remove others but not themselves */}
+                        {isOwner && member.userId !== membership.userId && (
+                          <RemoveMemberButton
+                            member={member}
+                            groupId={id}
+                            balanceCents={impact.balanceCents}
+                            expensesPaidCount={impact.expensesPaidCount}
+                            expensesSplitCount={impact.expensesSplitCount}
+                          />
+                        )}
                       </li>
                     );
                   })}

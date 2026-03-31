@@ -38,7 +38,7 @@ export default async function GroupPage({
   const { id } = await params;
   const { tab } = await searchParams;
 
-  const { membership } = await requireGroupAccess(id);
+  const { membership, userId: currentUserId } = await requireGroupAccess(id);
   const isOwner = membership.role === "owner";
 
   const group = await groupService.getGroup(id);
@@ -294,13 +294,16 @@ export default async function GroupPage({
                             groupId={id}
                             members={activeMembers}
                           />
-                          <form action={deleteExpense}>
-                            <input type="hidden" name="id" value={expense.id} />
-                            <input type="hidden" name="groupId" value={id} />
-                            <SubmitButton variant="destructive" size="sm">
-                              Delete
-                            </SubmitButton>
-                          </form>
+                          {/* Owner can delete any; members can delete their own */}
+                          {(isOwner || activeMembers.find((m) => m.userId === currentUserId)?.id === expense.paidBy) && (
+                            <form action={deleteExpense}>
+                              <input type="hidden" name="id" value={expense.id} />
+                              <input type="hidden" name="groupId" value={id} />
+                              <SubmitButton variant="destructive" size="sm">
+                                Delete
+                              </SubmitButton>
+                            </form>
+                          )}
                         </div>
                       </div>
                     </li>

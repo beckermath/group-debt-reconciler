@@ -109,7 +109,7 @@ function GroupCard({ group }: { group: GroupSummary }) {
 
   return (
     <Link href={`/group/${group.id}`}>
-      <Card className="group/link hover:-translate-y-0.5 transition-all duration-200">
+      <Card className="group/link hover:-translate-y-0.5 hover:shadow-md hover:shadow-[oklch(0.50_0.01_260/8%)] dark:hover:border-[oklch(1_0_0/14%)] transition-all duration-200">
         <CardContent className="py-4">
           {/* Mobile: stacked layout */}
           <div className="flex flex-col gap-3 sm:hidden">

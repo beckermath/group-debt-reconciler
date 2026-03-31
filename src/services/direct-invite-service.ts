@@ -78,6 +78,13 @@ export async function acceptDirectInvite(
   if (invite.invitedUserId !== userId) return { error: "This invite is not for you" };
   if (invite.status !== "pending") return { error: "This invite has already been responded to" };
 
+  // Verify the group still exists
+  const [group] = await db.select({ id: groups.id }).from(groups).where(eq(groups.id, invite.groupId));
+  if (!group) {
+    await db.update(directInvites).set({ status: "declined", respondedAt: new Date() }).where(eq(directInvites.id, inviteId));
+    return { error: "This group no longer exists" };
+  }
+
   // Check not already a member (could have joined via link in the meantime)
   const [existingMember] = await db
     .select()

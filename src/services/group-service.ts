@@ -102,6 +102,15 @@ export async function getUserGroupSummaries(userId: string): Promise<GroupSummar
       .from(members)
       .where(and(eq(members.groupId, group.id), isNull(members.removedAt)));
 
+    // Skip groups where the current user's member is removed (ghost groups)
+    const userMemberExists = groupMembersList.some((m) => m.userId === userId);
+    const isOwnerAccess = await db
+      .select({ role: groupMembers.role })
+      .from(groupMembers)
+      .where(and(eq(groupMembers.groupId, group.id), eq(groupMembers.userId, userId)))
+      .then((rows) => rows[0]?.role === "owner");
+    if (!userMemberExists && !isOwnerAccess) continue;
+
     // Get last settlement
     const [lastSettlement] = await db
       .select({ settledAt: settlements.settledAt })

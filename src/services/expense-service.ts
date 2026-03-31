@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { expenses, expenseSplits } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { computeSplits, type SplitMode } from "@/lib/splits";
 import { validateMembersInGroup } from "./member-service";
@@ -127,6 +127,14 @@ export async function deleteExpense(expenseId: string, groupId: string) {
   await db.delete(expenseSplits).where(eq(expenseSplits.expenseId, expenseId));
   await db.delete(expenses).where(eq(expenses.id, expenseId));
   return {};
+}
+
+export async function getExpense(expenseId: string, groupId: string) {
+  const [expense] = await db
+    .select()
+    .from(expenses)
+    .where(and(eq(expenses.id, expenseId), eq(expenses.groupId, groupId)));
+  return expense ?? null;
 }
 
 export async function getGroupExpensesWithSplits(groupId: string) {

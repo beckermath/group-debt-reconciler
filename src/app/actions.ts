@@ -103,8 +103,9 @@ export async function deleteMember(formData: FormData) {
   const groupId = formData.get("groupId") as string;
   if (!id || !groupId) return;
   try {
-    await requireGroupAccess(groupId);
-    await memberService.deleteMember(id, groupId);
+    await requireGroupOwner(groupId);
+    const result = await memberService.deleteMember(id, groupId);
+    if (result.error) return;
     redirect(`/group/${groupId}?tab=members`);
   } catch (error) {
     if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
@@ -189,7 +190,7 @@ export async function softDeleteMember(formData: FormData) {
   const groupId = formData.get("groupId") as string;
   if (!id || !groupId) return;
   try {
-    await requireGroupAccess(groupId);
+    await requireGroupOwner(groupId);
     await memberService.softDeleteMember(id, groupId);
     redirect(`/group/${groupId}?tab=members`);
   } catch (error) {
@@ -203,7 +204,7 @@ export async function restoreMember(formData: FormData) {
   const groupId = formData.get("groupId") as string;
   if (!id || !groupId) return;
   try {
-    await requireGroupAccess(groupId);
+    await requireGroupOwner(groupId);
     await memberService.restoreMember(id, groupId);
     redirect(`/group/${groupId}?tab=members`);
   } catch (error) {
@@ -217,7 +218,16 @@ export async function deleteExpense(formData: FormData) {
   const groupId = formData.get("groupId") as string;
   if (!id || !groupId) return;
   try {
-    await requireGroupAccess(groupId);
+    // Owner can delete any expense; members can only delete expenses they paid for
+    const { membership } = await requireGroupAccess(groupId);
+    if (membership.role !== "owner") {
+      const expense = await expenseService.getExpense(id, groupId);
+      if (!expense) return;
+      // Find the member linked to this user
+      const allMembers = await memberService.getGroupMembers(groupId);
+      const userMember = allMembers.find((m) => m.userId === membership.userId);
+      if (!userMember || expense.paidBy !== userMember.id) return;
+    }
     await expenseService.deleteExpense(id, groupId);
     redirect(`/group/${groupId}`);
   } catch (error) {
@@ -231,6 +241,26 @@ export async function deleteGroup(formData: FormData) {
   if (!groupId) return;
   try {
     await requireGroupOwner(groupId);
+
+    // Server-side check: block deletion if unsettled balances exist
+    const allMembers = await memberService.getGroupMembers(groupId);
+    const allExpenses = await expenseService.getGroupExpensesWithSplits(groupId);
+    const lastSettlement = await settlementService.getGroupSettlements(groupId).then((s) => s[0] ?? null);
+    const currentExpenses = lastSettlement
+      ? allExpenses.filter((e) => e.createdAt > lastSettlement.settledAt)
+      : allExpenses;
+
+    if (currentExpenses.length > 0) {
+      const { computeBalances } = await import("@/lib/balances");
+      const { reconcile } = await import("@/lib/reconcile");
+      const balances = computeBalances(currentExpenses, allMembers.map((m) => m.id));
+      const transfers = reconcile(balances);
+      if (transfers.length > 0) {
+        // Server-side enforcement — UI should also prevent this
+        return;
+      }
+    }
+
     await groupService.deleteGroup(groupId);
     redirect("/");
   } catch (error) {

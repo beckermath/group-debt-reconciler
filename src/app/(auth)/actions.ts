@@ -29,10 +29,15 @@ async function getClientIp(): Promise<string> {
 }
 
 export async function sendOtp(prevState: unknown, formData: FormData) {
-  const phoneNumber = (formData.get("phoneNumber") as string)?.trim();
+  let phoneNumber = (formData.get("phoneNumber") as string)?.trim();
+
+  // Normalize: if just digits, prepend +1
+  if (phoneNumber && /^\d{10}$/.test(phoneNumber)) {
+    phoneNumber = `+1${phoneNumber}`;
+  }
 
   if (!phoneNumber || !PHONE_REGEX.test(phoneNumber)) {
-    return { error: "Please enter a valid phone number (e.g., +12125551234)" };
+    return { error: "Please enter a valid 10-digit phone number" };
   }
 
   // Rate limit by both IP and phone number

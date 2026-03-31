@@ -317,11 +317,12 @@ export default async function GroupPage({
         <TabsContent value="members">
           <Card>
             <CardHeader>
-              <CardTitle>Members</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle>Members</CardTitle>
+                <AddPeopleDialog groupId={id} variant="inline" />
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <AddPeopleDialog groupId={id} variant="inline" />
-
               {activeMembers.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   No members yet. Add people above.

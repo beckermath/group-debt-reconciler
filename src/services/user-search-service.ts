@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { users, groupMembers } from "@/db/schema";
-import { eq, like, or, and, notInArray } from "drizzle-orm";
+import { eq, like, and, isNotNull } from "drizzle-orm";
 
 export type SearchResult = {
   id: string;
@@ -24,21 +24,20 @@ export async function searchUsers(
   const isPhoneQuery = /^\+?\d[\d\s-]{2,}$/.test(query.trim());
   const cleanQuery = query.trim();
 
+  // Only return users with a phone number (users without one can't sign in)
   let results;
   if (isPhoneQuery) {
-    // Phone number search — prefix match
     const phoneDigits = cleanQuery.replace(/\D/g, "");
     results = await db
       .select({ id: users.id, name: users.name, phoneNumber: users.phoneNumber })
       .from(users)
-      .where(like(users.phoneNumber, `%${phoneDigits}%`))
+      .where(and(isNotNull(users.phoneNumber), like(users.phoneNumber, `%${phoneDigits}%`)))
       .limit(15);
   } else {
-    // Name search — case-insensitive LIKE
     results = await db
       .select({ id: users.id, name: users.name, phoneNumber: users.phoneNumber })
       .from(users)
-      .where(like(users.name, `%${cleanQuery}%`))
+      .where(and(isNotNull(users.phoneNumber), like(users.name, `%${cleanQuery}%`)))
       .limit(15);
   }
 

@@ -1,13 +1,22 @@
 import { db } from "@/db";
 import { otpCodes, users } from "@/db/schema";
 import { eq, and, isNull, desc } from "drizzle-orm";
-import { randomUUID, randomInt, timingSafeEqual } from "crypto";
+import { randomUUID, randomInt, timingSafeEqual, createHash } from "crypto";
 import { sendSms } from "@/services/sms-service";
 
 const OTP_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_ATTEMPTS = 5;
-const isTest = process.env.PLAYWRIGHT_TEST === "1";
 const TEST_CODE = "000000";
+
+function hashOtp(code: string): string {
+  return createHash("sha256").update(code).digest("hex");
+}
+
+// Test mode: only allowed outside production
+const isTest = process.env.PLAYWRIGHT_TEST === "1" && process.env.NODE_ENV !== "production";
+if (process.env.PLAYWRIGHT_TEST === "1" && process.env.NODE_ENV === "production") {
+  throw new Error("PLAYWRIGHT_TEST must not be set in production");
+}
 
 export async function generateOtp(phoneNumber: string): Promise<void> {
   // In test mode, skip DB and SMS entirely — tests use static code "000000"
@@ -32,7 +41,7 @@ export async function generateOtp(phoneNumber: string): Promise<void> {
   await db.insert(otpCodes).values({
     id: randomUUID(),
     phoneNumber,
-    code,
+    code: hashOtp(code), // Store hash, not plaintext
     expiresAt: new Date(now.getTime() + OTP_EXPIRY_MS),
     attempts: 0,
     createdAt: now,
@@ -101,10 +110,12 @@ export async function verifyOtp(
     .set({ attempts: otp.attempts + 1 })
     .where(eq(otpCodes.id, otp.id));
 
-  const inputBuffer = Buffer.from(inputCode.padEnd(6, "0"));
-  const storedBuffer = Buffer.from(otp.code.padEnd(6, "0"));
+  // Compare hashes using timing-safe comparison
+  const inputHash = hashOtp(inputCode);
+  const inputBuffer = Buffer.from(inputHash);
+  const storedBuffer = Buffer.from(otp.code);
 
-  if (!timingSafeEqual(inputBuffer, storedBuffer)) {
+  if (inputBuffer.length !== storedBuffer.length || !timingSafeEqual(inputBuffer, storedBuffer)) {
     return { valid: false, error: "Incorrect code. Please try again." };
   }
 

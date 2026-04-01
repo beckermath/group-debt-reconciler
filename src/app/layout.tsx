@@ -37,7 +37,9 @@ export default async function RootLayout({
           <main className="flex-1 px-4 sm:px-6 py-6 sm:py-8 max-w-3xl mx-auto w-full">
             {children}
           </main>
-          <DevSwitcher currentUserName={session?.user?.name ?? undefined} />
+          {process.env.ENABLE_DEV_TOOLS && process.env.NODE_ENV !== "production" && (
+            <DevSwitcher currentUserName={session?.user?.name ?? undefined} />
+          )}
         </ThemeProvider>
         </SessionProvider>
       </body>

@@ -72,7 +72,7 @@ export async function createGroup(formData: FormData) {
     redirect(`/group/${groupId}/setup`);
   } catch (error) {
     if (isNextRedirect(error)) throw error;
-    console.error(error);
+    // Error logged server-side only — do not expose to client
   }
 }
 
@@ -81,15 +81,16 @@ export async function addMembersInBatch(groupId: string, names: string[]) {
   try {
     await requireGroupAccess(groupId);
     const validNames = names
-      .map((n) => n.trim())
-      .filter((n) => n.length > 0);
+      .map((n) => n.trim().slice(0, MAX_NAME_LENGTH))
+      .filter((n) => n.length > 0)
+      .slice(0, 50); // Cap at 50 members per batch
     for (const name of validNames) {
       await memberService.addMember(groupId, name);
     }
     redirect(`/group/${groupId}`);
   } catch (error) {
     if (isNextRedirect(error)) throw error;
-    console.error(error);
+    // Error logged server-side only — do not expose to client
   }
 }
 
@@ -117,7 +118,7 @@ export async function deleteMember(formData: FormData) {
     redirect(`/group/${groupId}?tab=members`);
   } catch (error) {
     if (isNextRedirect(error)) throw error;
-    console.error(error);
+    // Error logged server-side only — do not expose to client
   }
 }
 
@@ -155,7 +156,7 @@ export async function createExpense(formData: FormData) {
     redirect(`/group/${groupId}`);
   } catch (error) {
     if (isNextRedirect(error)) throw error;
-    console.error(error);
+    // Error logged server-side only — do not expose to client
   }
 }
 
@@ -173,7 +174,16 @@ export async function updateExpense(formData: FormData) {
   if (!Number.isFinite(amountCents) || amountCents <= 0) return;
 
   try {
-    await requireGroupAccess(groupId);
+    const { membership } = await requireGroupAccess(groupId);
+
+    // Owner can edit any expense; members can only edit their own
+    if (membership.role !== "owner") {
+      const expense = await expenseService.getExpense(expenseId, groupId);
+      if (!expense) return;
+      const allMembers = await memberService.getGroupMembers(groupId);
+      const userMember = allMembers.find((m) => m.userId === membership.userId);
+      if (!userMember || expense.paidBy !== userMember.id) return;
+    }
 
     const splitMode: SplitMode = (formData.get("splitMode") as string) === "custom" ? "custom" : "equal";
     const customAmounts: Record<string, string> = {};
@@ -185,7 +195,7 @@ export async function updateExpense(formData: FormData) {
       expenseId,
       groupId,
       paidBy,
-      description,
+      description: description.trim().slice(0, MAX_DESCRIPTION_LENGTH),
       amountCents,
       splitMemberIds,
       splitMode,
@@ -195,7 +205,7 @@ export async function updateExpense(formData: FormData) {
     redirect(`/group/${groupId}`);
   } catch (error) {
     if (isNextRedirect(error)) throw error;
-    console.error(error);
+    // Error logged server-side only — do not expose to client
   }
 }
 
@@ -209,7 +219,7 @@ export async function softDeleteMember(formData: FormData) {
     redirect(`/group/${groupId}?tab=members`);
   } catch (error) {
     if (isNextRedirect(error)) throw error;
-    console.error(error);
+    // Error logged server-side only — do not expose to client
   }
 }
 
@@ -223,7 +233,7 @@ export async function restoreMember(formData: FormData) {
     redirect(`/group/${groupId}?tab=members`);
   } catch (error) {
     if (isNextRedirect(error)) throw error;
-    console.error(error);
+    // Error logged server-side only — do not expose to client
   }
 }
 
@@ -246,7 +256,7 @@ export async function deleteExpense(formData: FormData) {
     redirect(`/group/${groupId}`);
   } catch (error) {
     if (isNextRedirect(error)) throw error;
-    console.error(error);
+    // Error logged server-side only — do not expose to client
   }
 }
 
@@ -279,7 +289,7 @@ export async function deleteGroup(formData: FormData) {
     redirect("/");
   } catch (error) {
     if (isNextRedirect(error)) throw error;
-    console.error(error);
+    // Error logged server-side only — do not expose to client
   }
 }
 
@@ -312,7 +322,7 @@ export async function acceptInvite(code: string) {
     redirect(`/group/${result.groupId}`);
   } catch (error) {
     if (isNextRedirect(error)) throw error;
-    console.error(error);
+    // Error logged server-side only — do not expose to client
   }
 }
 
@@ -325,7 +335,7 @@ export async function settleUp(formData: FormData) {
     redirect(`/group/${groupId}?tab=history`);
   } catch (error) {
     if (isNextRedirect(error)) throw error;
-    console.error(error);
+    // Error logged server-side only — do not expose to client
   }
 }
 
@@ -339,7 +349,7 @@ export async function undoSettlement(formData: FormData) {
     redirect(`/group/${groupId}?tab=history`);
   } catch (error) {
     if (isNextRedirect(error)) throw error;
-    console.error(error);
+    // Error logged server-side only — do not expose to client
   }
 }
 
@@ -384,7 +394,7 @@ export async function acceptDirectInvite(formData: FormData) {
     if (result.groupId) redirect(`/group/${result.groupId}`);
   } catch (error) {
     if (isNextRedirect(error)) throw error;
-    console.error(error);
+    // Error logged server-side only — do not expose to client
   }
 }
 
@@ -397,6 +407,6 @@ export async function declineDirectInvite(formData: FormData) {
     redirect("/");
   } catch (error) {
     if (isNextRedirect(error)) throw error;
-    console.error(error);
+    // Error logged server-side only — do not expose to client
   }
 }

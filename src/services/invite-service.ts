@@ -6,7 +6,7 @@ import { randomUUID, randomInt } from "crypto";
 function generateInviteCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
   let code = "";
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 12; i++) {
     code += chars[randomInt(chars.length)];
   }
   return code;

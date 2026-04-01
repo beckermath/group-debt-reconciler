@@ -16,7 +16,8 @@ export function DevSwitcher({ currentUserName }: { currentUserName?: string }) {
   const [switching, setSwitching] = useState<string | null>(null);
   const router = useRouter();
 
-  if (process.env.NODE_ENV === "production" || !process.env.NEXT_PUBLIC_ENABLE_DEV_TOOLS) return null;
+  // Dev switcher visibility is controlled by the server via props
+  // Render nothing in production — the layout won't render this component at all
 
   async function handleSwitch(phone: string) {
     setSwitching(phone);

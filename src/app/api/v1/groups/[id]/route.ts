@@ -70,6 +70,25 @@ export const DELETE = withErrorHandling(async (
   const auth = await withGroupOwner(request, id);
   if (auth instanceof Response) return auth;
 
+  // Enforce no unsettled balances before deletion
+  const { computeBalances } = await import("@/lib/balances");
+  const { reconcile } = await import("@/lib/reconcile");
+  const allMembers = await (await import("@/services/member-service")).getGroupMembers(id);
+  const allExpenses = await (await import("@/services/expense-service")).getGroupExpensesWithSplits(id);
+  const settlements = await (await import("@/services/settlement-service")).getGroupSettlements(id);
+  const lastSettlement = settlements[0] ?? null;
+  const currentExpenses = lastSettlement
+    ? allExpenses.filter((e) => e.createdAt > lastSettlement.settledAt)
+    : allExpenses;
+
+  if (currentExpenses.length > 0) {
+    const balances = computeBalances(currentExpenses, allMembers.map((m) => m.id));
+    const transfers = reconcile(balances);
+    if (transfers.length > 0) {
+      return res.badRequest("Cannot delete group with unsettled balances. Settle up first.");
+    }
+  }
+
   await groupService.deleteGroup(id);
   return res.noContent();
 });

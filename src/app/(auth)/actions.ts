@@ -18,11 +18,11 @@ function isNextRedirect(error: unknown): boolean {
   return (error as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT") ?? false;
 }
 
-// HMAC signing for verified-phone cookie
-const COOKIE_SECRET = process.env.AUTH_SECRET ?? "fallback-dev-secret";
+// HMAC signing for verified-phone cookie — AUTH_SECRET is enforced by env.ts at startup
+const COOKIE_SECRET = process.env.AUTH_SECRET!;
 
 function signPhone(phone: string): string {
-  const sig = createHmac("sha256", COOKIE_SECRET).update(phone).digest("hex").slice(0, 16);
+  const sig = createHmac("sha256", COOKIE_SECRET).update(phone).digest("hex").slice(0, 32);
   return `${phone}.${sig}`;
 }
 
@@ -31,7 +31,7 @@ function verifySignedPhone(value: string): string | null {
   if (lastDot === -1) return null;
   const phone = value.slice(0, lastDot);
   const sig = value.slice(lastDot + 1);
-  const expected = createHmac("sha256", COOKIE_SECRET).update(phone).digest("hex").slice(0, 16);
+  const expected = createHmac("sha256", COOKIE_SECRET).update(phone).digest("hex").slice(0, 32);
   if (sig !== expected) return null;
   return phone;
 }
@@ -229,6 +229,11 @@ export async function completeSetup(prevState: unknown, formData: FormData) {
 }
 
 export async function startGuestSession() {
+  // Rate limit guest creation by IP
+  const ip = await getClientIp();
+  const { success } = await otpSendRateLimit.limit(`guest:${ip}`);
+  if (!success) return;
+
   const guestId = randomUUID();
 
   await db.insert(users).values({

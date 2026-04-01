@@ -13,6 +13,7 @@ declare module "next-auth" {
       phoneNumber?: string | null;
       email?: string | null;
       image?: string | null;
+      isGuest: boolean;
     };
   }
 }
@@ -24,10 +25,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         phoneNumber: {},
         userId: {},
+        guestId: {},
       },
       async authorize(credentials) {
-        // This is called after OTP verification succeeds.
-        // The userId is passed from the verifyOtp action.
+        const guestId = credentials?.guestId as string;
+
+        // Guest sign-in
+        if (guestId) {
+          const [guest] = await db
+            .select()
+            .from(users)
+            .where(eq(users.id, guestId));
+
+          if (!guest || !guest.isGuest) return null;
+
+          return { id: guest.id, name: guest.name };
+        }
+
+        // Phone OTP sign-in
         const userId = credentials?.userId as string;
         const phoneNumber = credentials?.phoneNumber as string;
         if (!userId || !phoneNumber) return null;
@@ -39,12 +54,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!user || user.phoneNumber !== phoneNumber) return null;
 
-        return {
-          id: user.id,
-          name: user.name,
-          phoneNumber: user.phoneNumber,
-          email: user.email,
-        };
+        return { id: user.id, name: user.name, email: user.email };
       },
     }),
   ],
@@ -53,17 +63,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/phone",
   },
   callbacks: {
-    jwt({ token, user }) {
+    async jwt({ token, user }) {
       if (user?.id) {
         token.sub = user.id;
-        token.phoneNumber = (user as { phoneNumber?: string }).phoneNumber;
+      }
+      // Always read isGuest and phoneNumber from DB for fresh data
+      if (token.sub) {
+        const [dbUser] = await db
+          .select({ isGuest: users.isGuest, phoneNumber: users.phoneNumber })
+          .from(users)
+          .where(eq(users.id, token.sub));
+        if (dbUser) {
+          token.isGuest = !!dbUser.isGuest;
+          token.phoneNumber = dbUser.phoneNumber;
+        }
       }
       return token;
     },
     session({ session, token }) {
       if (session.user) {
         session.user.id = token.sub as string;
-        session.user.phoneNumber = token.phoneNumber as string | undefined;
+        session.user.phoneNumber = (token.phoneNumber as string) ?? null;
+        session.user.isGuest = !!token.isGuest;
       }
       return session;
     },

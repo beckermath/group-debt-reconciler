@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
-import { signIn } from "@/lib/auth";
+import { auth, signIn } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { headers, cookies } from "next/headers";
 import { otpSendRateLimit, otpVerifyRateLimit } from "@/lib/rate-limit";
@@ -29,10 +29,15 @@ async function getClientIp(): Promise<string> {
 }
 
 export async function sendOtp(prevState: unknown, formData: FormData) {
-  const phoneNumber = (formData.get("phoneNumber") as string)?.trim();
+  let phoneNumber = (formData.get("phoneNumber") as string)?.trim();
+
+  // Normalize: if just digits, prepend +1
+  if (phoneNumber && /^\d{10}$/.test(phoneNumber)) {
+    phoneNumber = `+1${phoneNumber}`;
+  }
 
   if (!phoneNumber || !PHONE_REGEX.test(phoneNumber)) {
-    return { error: "Please enter a valid phone number (e.g., +12125551234)" };
+    return { error: "Please enter a valid 10-digit phone number" };
   }
 
   // Rate limit by both IP and phone number
@@ -143,7 +148,32 @@ export async function completeSetup(prevState: unknown, formData: FormData) {
     return;
   }
 
-  // Create the user
+  // Check if current session is a guest — upgrade in-place
+  const session = await auth();
+  if (session?.user?.isGuest) {
+    await db
+      .update(users)
+      .set({ phoneNumber, name, isGuest: false })
+      .where(eq(users.id, session.user.id));
+
+    cookieStore.delete("verified-phone");
+
+    try {
+      await signIn("credentials", {
+        phoneNumber,
+        userId: session.user.id,
+        redirectTo: "/",
+      });
+    } catch (error) {
+      if ((error as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+        throw error;
+      }
+      return { error: "Upgrade failed. Please try again." };
+    }
+    return;
+  }
+
+  // Create a new user
   const userId = randomUUID();
   await db.insert(users).values({
     id: userId,
@@ -160,10 +190,8 @@ export async function completeSetup(prevState: unknown, formData: FormData) {
     // member_identities table may not exist yet
   }
 
-  // Clear the cookie
   cookieStore.delete("verified-phone");
 
-  // Sign in
   try {
     await signIn("credentials", {
       phoneNumber,
@@ -175,5 +203,26 @@ export async function completeSetup(prevState: unknown, formData: FormData) {
       throw error;
     }
     return { error: "Account created but sign in failed. Please try signing in." };
+  }
+}
+
+export async function startGuestSession() {
+  const guestId = randomUUID();
+
+  await db.insert(users).values({
+    id: guestId,
+    name: "Guest",
+    isGuest: true,
+  });
+
+  try {
+    await signIn("credentials", {
+      guestId,
+      redirectTo: "/",
+    });
+  } catch (error) {
+    if ((error as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+      throw error;
+    }
   }
 }

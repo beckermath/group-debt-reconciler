@@ -9,6 +9,7 @@ export const users = sqliteTable("users", {
   emailVerified: integer("email_verified", { mode: "timestamp" }),
   image: text("image"),
   passwordHash: text("password_hash"),
+  isGuest: integer("is_guest", { mode: "boolean" }).notNull().default(false),
 });
 
 export const accounts = sqliteTable("accounts", {

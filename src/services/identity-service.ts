@@ -13,10 +13,28 @@ export interface ExternalIdentity {
 /**
  * Link an external identity to a member.
  */
+const MAX_IDENTITY_LENGTH = 200;
+const PHONE_FORMAT = /^\+[1-9]\d{9,14}$/;
+const EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validateIdentity(identity: ExternalIdentity): string | null {
+  if (identity.providerIdentity.length > MAX_IDENTITY_LENGTH) return "Identity value too long";
+  if (identity.provider === "phone" && !PHONE_FORMAT.test(identity.providerIdentity.replace(/[\s\-()]/g, ""))) {
+    return "Invalid phone number format";
+  }
+  if (identity.provider === "email" && !EMAIL_FORMAT.test(identity.providerIdentity.trim())) {
+    return "Invalid email format";
+  }
+  return null;
+}
+
 export async function linkIdentity(
   memberId: string,
   identity: ExternalIdentity
 ) {
+  const validationError = validateIdentity(identity);
+  if (validationError) return { error: validationError };
+
   const normalized = normalizeIdentity(identity);
 
   // Check if this identity is already linked to this member

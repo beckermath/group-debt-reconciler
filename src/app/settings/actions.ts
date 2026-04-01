@@ -32,7 +32,6 @@ export async function deleteAccount(formData: FormData) {
     await signOut({ redirect: false });
     redirect("/phone");
   } catch (error) {
-    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
-    console.error(error);
+    if ((error as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) throw error;
   }
 }

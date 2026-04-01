@@ -3,7 +3,7 @@
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { randomUUID } from "crypto";
+import { randomUUID, createHmac } from "crypto";
 import { auth, signIn } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { headers, cookies } from "next/headers";
@@ -13,6 +13,28 @@ import { claimGuestMembers } from "@/services/identity-service";
 
 // E.164 phone format: +1234567890 (10-15 digits after +)
 const PHONE_REGEX = /^\+[1-9]\d{9,14}$/;
+
+function isNextRedirect(error: unknown): boolean {
+  return (error as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT") ?? false;
+}
+
+// HMAC signing for verified-phone cookie — AUTH_SECRET is enforced by env.ts at startup
+const COOKIE_SECRET = process.env.AUTH_SECRET!;
+
+function signPhone(phone: string): string {
+  const sig = createHmac("sha256", COOKIE_SECRET).update(phone).digest("hex").slice(0, 32);
+  return `${phone}.${sig}`;
+}
+
+function verifySignedPhone(value: string): string | null {
+  const lastDot = value.lastIndexOf(".");
+  if (lastDot === -1) return null;
+  const phone = value.slice(0, lastDot);
+  const sig = value.slice(lastDot + 1);
+  const expected = createHmac("sha256", COOKIE_SECRET).update(phone).digest("hex").slice(0, 32);
+  if (sig !== expected) return null;
+  return phone;
+}
 
 function safeCallbackUrl(url: string): string {
   if (!url || !url.startsWith("/") || url.startsWith("//")) return "/";
@@ -84,7 +106,7 @@ export async function verifyOtpAction(prevState: unknown, formData: FormData) {
   if (result.isNewUser) {
     // Store verified phone in a signed cookie for the setup step
     const cookieStore = await cookies();
-    cookieStore.set("verified-phone", phoneNumber, {
+    cookieStore.set("verified-phone", signPhone(phoneNumber), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
@@ -102,9 +124,7 @@ export async function verifyOtpAction(prevState: unknown, formData: FormData) {
       redirectTo: callbackUrl,
     });
   } catch (error) {
-    if ((error as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
-      throw error;
-    }
+    if (isNextRedirect(error)) throw error;
     return { error: "Sign in failed. Please try again." };
   }
 }
@@ -115,10 +135,14 @@ export async function completeSetup(prevState: unknown, formData: FormData) {
   if (!name || name.length < 1) {
     return { error: "Please enter your name" };
   }
+  if (name.length > 100) {
+    return { error: "Name must be 100 characters or fewer" };
+  }
 
-  // Verify the phone cookie exists (proves OTP was verified)
+  // Verify the signed phone cookie exists (proves OTP was verified)
   const cookieStore = await cookies();
-  const phoneNumber = cookieStore.get("verified-phone")?.value;
+  const rawCookie = cookieStore.get("verified-phone")?.value;
+  const phoneNumber = rawCookie ? verifySignedPhone(rawCookie) : null;
 
   if (!phoneNumber) {
     redirect("/phone");
@@ -199,14 +223,17 @@ export async function completeSetup(prevState: unknown, formData: FormData) {
       redirectTo: "/",
     });
   } catch (error) {
-    if ((error as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
-      throw error;
-    }
+    if (isNextRedirect(error)) throw error;
     return { error: "Account created but sign in failed. Please try signing in." };
   }
 }
 
 export async function startGuestSession() {
+  // Rate limit guest creation by IP
+  const ip = await getClientIp();
+  const { success } = await otpSendRateLimit.limit(`guest:${ip}`);
+  if (!success) return;
+
   const guestId = randomUUID();
 
   await db.insert(users).values({
@@ -221,8 +248,6 @@ export async function startGuestSession() {
       redirectTo: "/",
     });
   } catch (error) {
-    if ((error as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
-      throw error;
-    }
+    if (isNextRedirect(error)) throw error;
   }
 }

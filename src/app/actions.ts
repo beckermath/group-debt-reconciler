@@ -16,10 +16,17 @@ import * as directInviteService from "@/services/direct-invite-service";
 import * as userSearchService from "@/services/user-search-service";
 import type { SplitMode } from "@/lib/splits";
 
+function isNextRedirect(error: unknown): boolean {
+  return (error as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT") ?? false;
+}
+
+const MAX_NAME_LENGTH = 100;
+const MAX_DESCRIPTION_LENGTH = 500;
+
 // --- Dev-only account switcher ---
 
 export async function devSwitchUser(phoneNumber: string): Promise<{ error?: string }> {
-  if (process.env.NODE_ENV === "production") return { error: "Not available" };
+  if (process.env.NODE_ENV === "production" || !process.env.ENABLE_DEV_TOOLS) return { error: "Not available" };
   if (!phoneNumber) return { error: "Phone number required" };
 
   const [user] = await db
@@ -52,20 +59,20 @@ export async function renameGroup(groupId: string, newName: string) {
     await requireGroupOwner(groupId);
     await groupService.renameGroup(groupId, newName);
   } catch (error) {
-    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    if (isNextRedirect(error)) throw error;
     return { error: "Something went wrong" };
   }
 }
 
 export async function createGroup(formData: FormData) {
-  const name = (formData.get("name") as string)?.trim() || "New Group";
+  const name = ((formData.get("name") as string)?.trim() || "New Group").slice(0, MAX_NAME_LENGTH);
   try {
     const { userId } = await requireAuthWithRateLimit();
     const { groupId } = await groupService.createGroup(userId, name);
     redirect(`/group/${groupId}/setup`);
   } catch (error) {
-    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
-    console.error(error);
+    if (isNextRedirect(error)) throw error;
+    // Error logged server-side only — do not expose to client
   }
 }
 
@@ -74,26 +81,28 @@ export async function addMembersInBatch(groupId: string, names: string[]) {
   try {
     await requireGroupAccess(groupId);
     const validNames = names
-      .map((n) => n.trim())
-      .filter((n) => n.length > 0);
+      .map((n) => n.trim().slice(0, MAX_NAME_LENGTH))
+      .filter((n) => n.length > 0)
+      .slice(0, 50); // Cap at 50 members per batch
     for (const name of validNames) {
       await memberService.addMember(groupId, name);
     }
     redirect(`/group/${groupId}`);
   } catch (error) {
-    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
-    console.error(error);
+    if (isNextRedirect(error)) throw error;
+    // Error logged server-side only — do not expose to client
   }
 }
 
 export async function addMemberQuiet(groupId: string, name: string): Promise<{ error?: string }> {
   if (!name?.trim() || !groupId) return { error: "Name is required" };
+  if (name.trim().length > MAX_NAME_LENGTH) return { error: "Name is too long" };
   try {
     await requireGroupAccess(groupId);
     await memberService.addMember(groupId, name);
     return {};
   } catch (error) {
-    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    if (isNextRedirect(error)) throw error;
     return { error: "Failed to add member" };
   }
 }
@@ -108,8 +117,8 @@ export async function deleteMember(formData: FormData) {
     if (result.error) return;
     redirect(`/group/${groupId}?tab=members`);
   } catch (error) {
-    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
-    console.error(error);
+    if (isNextRedirect(error)) throw error;
+    // Error logged server-side only — do not expose to client
   }
 }
 
@@ -121,10 +130,13 @@ export async function createExpense(formData: FormData) {
   const splitMemberIds = formData.getAll("splitWith") as string[];
 
   if (!groupId || !paidBy || !description?.trim() || !amountStr || splitMemberIds.length === 0) return;
+  if (description.trim().length > MAX_DESCRIPTION_LENGTH) return;
+  const amountCents = Math.round(parseFloat(amountStr) * 100);
+  if (!Number.isFinite(amountCents) || amountCents <= 0) return;
+
   try {
     await requireGroupAccess(groupId);
 
-    const amountCents = Math.round(parseFloat(amountStr) * 100);
     const splitMode: SplitMode = (formData.get("splitMode") as string) === "custom" ? "custom" : "equal";
     const customAmounts: Record<string, string> = {};
     for (const memberId of splitMemberIds) {
@@ -134,7 +146,7 @@ export async function createExpense(formData: FormData) {
     await expenseService.createExpense({
       groupId,
       paidBy,
-      description,
+      description: description.trim().slice(0, MAX_DESCRIPTION_LENGTH),
       amountCents,
       splitMemberIds,
       splitMode,
@@ -143,8 +155,8 @@ export async function createExpense(formData: FormData) {
 
     redirect(`/group/${groupId}`);
   } catch (error) {
-    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
-    console.error(error);
+    if (isNextRedirect(error)) throw error;
+    // Error logged server-side only — do not expose to client
   }
 }
 
@@ -157,10 +169,22 @@ export async function updateExpense(formData: FormData) {
   const splitMemberIds = formData.getAll("splitWith") as string[];
 
   if (!expenseId || !groupId || !paidBy || !description?.trim() || !amountStr || splitMemberIds.length === 0) return;
-  try {
-    await requireGroupAccess(groupId);
+  if (description.trim().length > MAX_DESCRIPTION_LENGTH) return;
+  const amountCents = Math.round(parseFloat(amountStr) * 100);
+  if (!Number.isFinite(amountCents) || amountCents <= 0) return;
 
-    const amountCents = Math.round(parseFloat(amountStr) * 100);
+  try {
+    const { membership } = await requireGroupAccess(groupId);
+
+    // Owner can edit any expense; members can only edit their own
+    if (membership.role !== "owner") {
+      const expense = await expenseService.getExpense(expenseId, groupId);
+      if (!expense) return;
+      const allMembers = await memberService.getGroupMembers(groupId);
+      const userMember = allMembers.find((m) => m.userId === membership.userId);
+      if (!userMember || expense.paidBy !== userMember.id) return;
+    }
+
     const splitMode: SplitMode = (formData.get("splitMode") as string) === "custom" ? "custom" : "equal";
     const customAmounts: Record<string, string> = {};
     for (const memberId of splitMemberIds) {
@@ -171,7 +195,7 @@ export async function updateExpense(formData: FormData) {
       expenseId,
       groupId,
       paidBy,
-      description,
+      description: description.trim().slice(0, MAX_DESCRIPTION_LENGTH),
       amountCents,
       splitMemberIds,
       splitMode,
@@ -180,8 +204,8 @@ export async function updateExpense(formData: FormData) {
 
     redirect(`/group/${groupId}`);
   } catch (error) {
-    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
-    console.error(error);
+    if (isNextRedirect(error)) throw error;
+    // Error logged server-side only — do not expose to client
   }
 }
 
@@ -194,8 +218,8 @@ export async function softDeleteMember(formData: FormData) {
     await memberService.softDeleteMember(id, groupId);
     redirect(`/group/${groupId}?tab=members`);
   } catch (error) {
-    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
-    console.error(error);
+    if (isNextRedirect(error)) throw error;
+    // Error logged server-side only — do not expose to client
   }
 }
 
@@ -208,8 +232,8 @@ export async function restoreMember(formData: FormData) {
     await memberService.restoreMember(id, groupId);
     redirect(`/group/${groupId}?tab=members`);
   } catch (error) {
-    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
-    console.error(error);
+    if (isNextRedirect(error)) throw error;
+    // Error logged server-side only — do not expose to client
   }
 }
 
@@ -231,8 +255,8 @@ export async function deleteExpense(formData: FormData) {
     await expenseService.deleteExpense(id, groupId);
     redirect(`/group/${groupId}`);
   } catch (error) {
-    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
-    console.error(error);
+    if (isNextRedirect(error)) throw error;
+    // Error logged server-side only — do not expose to client
   }
 }
 
@@ -264,8 +288,8 @@ export async function deleteGroup(formData: FormData) {
     await groupService.deleteGroup(groupId);
     redirect("/");
   } catch (error) {
-    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
-    console.error(error);
+    if (isNextRedirect(error)) throw error;
+    // Error logged server-side only — do not expose to client
   }
 }
 
@@ -277,7 +301,7 @@ export async function createInviteLink(formData: FormData) {
     const { userId } = await requireGroupAccess(groupId);
     return await inviteService.createInviteLink(groupId, userId);
   } catch (error) {
-    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    if (isNextRedirect(error)) throw error;
     return { error: "Something went wrong" };
   }
 }
@@ -297,8 +321,8 @@ export async function acceptInvite(code: string) {
     if ("alreadyMember" in result) redirect(`/group/${result.groupId}`);
     redirect(`/group/${result.groupId}`);
   } catch (error) {
-    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
-    console.error(error);
+    if (isNextRedirect(error)) throw error;
+    // Error logged server-side only — do not expose to client
   }
 }
 
@@ -310,8 +334,8 @@ export async function settleUp(formData: FormData) {
     await settlementService.settleUp(groupId, userId);
     redirect(`/group/${groupId}?tab=history`);
   } catch (error) {
-    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
-    console.error(error);
+    if (isNextRedirect(error)) throw error;
+    // Error logged server-side only — do not expose to client
   }
 }
 
@@ -324,8 +348,8 @@ export async function undoSettlement(formData: FormData) {
     await settlementService.undoSettlement(settlementId, groupId);
     redirect(`/group/${groupId}?tab=history`);
   } catch (error) {
-    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
-    console.error(error);
+    if (isNextRedirect(error)) throw error;
+    // Error logged server-side only — do not expose to client
   }
 }
 
@@ -340,7 +364,7 @@ export async function searchUsers(query: string, groupId: string) {
     const results = await userSearchService.searchUsers(query, userId, groupId);
     return { results };
   } catch (error) {
-    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    if (isNextRedirect(error)) throw error;
     return { error: "Something went wrong", results: [] };
   }
 }
@@ -356,7 +380,7 @@ export async function sendDirectInvite(formData: FormData) {
     if (!success) return { error: "Too many invites. Please try again later." };
     return await directInviteService.sendDirectInvite(groupId, userId, targetUserId);
   } catch (error) {
-    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    if (isNextRedirect(error)) throw error;
     return { error: "Something went wrong" };
   }
 }
@@ -369,8 +393,8 @@ export async function acceptDirectInvite(formData: FormData) {
     const result = await directInviteService.acceptDirectInvite(inviteId, userId);
     if (result.groupId) redirect(`/group/${result.groupId}`);
   } catch (error) {
-    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
-    console.error(error);
+    if (isNextRedirect(error)) throw error;
+    // Error logged server-side only — do not expose to client
   }
 }
 
@@ -382,7 +406,7 @@ export async function declineDirectInvite(formData: FormData) {
     await directInviteService.declineDirectInvite(inviteId, userId);
     redirect("/");
   } catch (error) {
-    if ((error as any)?.digest?.startsWith("NEXT_REDIRECT")) throw error;
-    console.error(error);
+    if (isNextRedirect(error)) throw error;
+    // Error logged server-side only — do not expose to client
   }
 }

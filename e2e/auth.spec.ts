@@ -31,8 +31,12 @@ test.describe("Authentication", () => {
     await page.getByRole("button", { name: "Sign out", exact: true }).click();
     await expect(page).toHaveURL(/\/phone/, { timeout: 10000 });
 
-    // Sign back in with same phone
-    await page.getByLabel("Phone number").fill(phone);
+    // Sign back in with same phone — use pressSequentially to ensure
+    // React's onChange fires for each character (fill() can race with hydration)
+    await expect(page.getByText("Sign in with your phone")).toBeVisible({ timeout: 10000 });
+    await page.getByLabel("Phone number").click();
+    await page.getByLabel("Phone number").pressSequentially(phone, { delay: 20 });
+    await expect(page.getByRole("button", { name: "Send code" })).toBeEnabled({ timeout: 5000 });
     await page.getByRole("button", { name: "Send code" }).click();
     await expect(page).toHaveURL(/\/phone\/verify/, { timeout: 10000 });
     await page.getByLabel("Verification code").fill("000000");

@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { SubmitButton } from "@/components/submit-button";
@@ -88,12 +88,16 @@ export default async function GroupPage({
     amount: t.amount,
   }));
 
-  // Build settlement history data
+  // Build settlement history data — batch query instead of N+1
+  const settlerIds = [...new Set(allSettlements.map((s) => s.settledBy))];
   const settlementUsers = new Map<string, string>();
-  for (const s of allSettlements) {
-    if (!settlementUsers.has(s.settledBy)) {
-      const [u] = await db.select().from(users).where(eq(users.id, s.settledBy));
-      if (u) settlementUsers.set(s.settledBy, u.name ?? u.phoneNumber ?? "Unknown");
+  if (settlerIds.length > 0) {
+    const settlers = await db
+      .select({ id: users.id, name: users.name, phoneNumber: users.phoneNumber })
+      .from(users)
+      .where(inArray(users.id, settlerIds));
+    for (const u of settlers) {
+      settlementUsers.set(u.id, u.name ?? u.phoneNumber ?? "Unknown");
     }
   }
 

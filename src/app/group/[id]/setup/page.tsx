@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth";
+import { requireGroupAccess } from "@/lib/auth-helpers";
 import { GroupSetupClient } from "./client";
 
 export default async function GroupSetupPage({
@@ -7,7 +7,7 @@ export default async function GroupSetupPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const session = await auth();
+  const { session } = await requireGroupAccess(id);
   const isGuest = session?.user?.isGuest ?? false;
 
   return <GroupSetupClient id={id} isGuest={isGuest} />;

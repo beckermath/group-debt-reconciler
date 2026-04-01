@@ -16,7 +16,7 @@ export function DevSwitcher({ currentUserName }: { currentUserName?: string }) {
   const [switching, setSwitching] = useState<string | null>(null);
   const router = useRouter();
 
-  if (process.env.NODE_ENV === "production") return null;
+  if (process.env.NODE_ENV === "production" || !process.env.NEXT_PUBLIC_ENABLE_DEV_TOOLS) return null;
 
   async function handleSwitch(phone: string) {
     setSwitching(phone);

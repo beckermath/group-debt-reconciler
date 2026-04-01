@@ -1,16 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useIsGuest } from "@/hooks/use-is-guest";
-import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import Link from "next/link";
 
-export function GuestBanner() {
-  const { isGuest, isLoading } = useIsGuest();
+export function GuestBanner({ isGuest }: { isGuest: boolean }) {
   const [dismissed, setDismissed] = useState(false);
 
-  if (isLoading || !isGuest || dismissed) return null;
+  if (!isGuest || dismissed) return null;
 
   return (
     <div className="border-b bg-accent/5 px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3">

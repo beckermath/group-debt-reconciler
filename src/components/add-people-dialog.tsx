@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useIsGuest } from "@/hooks/use-is-guest";
 import { UserPlus, Search, Check, LoaderCircle, Link2, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,12 +24,13 @@ type SearchResult = {
 export function AddPeopleDialog({
   groupId,
   variant = "header",
+  isGuest = false,
 }: {
   groupId: string;
   variant?: "header" | "inline";
+  isGuest?: boolean;
 }) {
   const router = useRouter();
-  const { isGuest } = useIsGuest();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);

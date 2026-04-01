@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
+import { auth } from "@/lib/auth";
 import { SubmitButton } from "@/components/submit-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { deleteExpense, deleteMember, restoreMember } from "@/app/actions";
@@ -49,6 +50,8 @@ export default async function GroupPage({
   const activeMembers = allGroupMembers.filter((m) => !m.removedAt);
   const removedMembers = allGroupMembers.filter((m) => m.removedAt);
   const allMembers = [...activeMembers, ...removedMembers];
+  const currentMember = activeMembers.find((m) => m.userId === currentUserId);
+  const sessionIsGuest = (await auth())?.user?.isGuest ?? false;
   const memberMap = new Map(
     allMembers.map((m) => [m.id, m.removedAt ? `${m.name} (removed)` : m.name])
   );
@@ -195,7 +198,7 @@ export default async function GroupPage({
             <EditableGroupName groupId={id} name={group.name} isOwner={isOwner} />
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <AddPeopleDialog groupId={id} />
+            <AddPeopleDialog groupId={id} isGuest={sessionIsGuest} />
             {isOwner && (
               <DeleteGroupButton
                 groupId={id}
@@ -221,6 +224,8 @@ export default async function GroupPage({
         groupId={id}
         transfers={transfersWithNames}
         activeMembers={activeMembers}
+        currentMemberId={currentMember?.id}
+        isGuest={sessionIsGuest}
       />
 
       {/* Zone B: Tabbed detail sections */}
@@ -256,7 +261,7 @@ export default async function GroupPage({
                 <p className="text-sm text-muted-foreground">
                   No expenses yet{lastSettlement ? " since last settlement" : ""}.
                 </p>
-                <AddExpenseDialog groupId={id} members={activeMembers} />
+                <AddExpenseDialog groupId={id} members={activeMembers} currentMemberId={currentMember?.id} isGuest={sessionIsGuest} />
               </CardContent>
             </Card>
           ) : (
@@ -271,7 +276,7 @@ export default async function GroupPage({
                       </span>
                     )}
                   </CardTitle>
-                  <AddExpenseDialog groupId={id} members={activeMembers} />
+                  <AddExpenseDialog groupId={id} members={activeMembers} currentMemberId={currentMember?.id} isGuest={sessionIsGuest} />
                 </div>
               </CardHeader>
               <CardContent>
@@ -319,7 +324,7 @@ export default async function GroupPage({
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Members</CardTitle>
-                <AddPeopleDialog groupId={id} variant="inline" />
+                <AddPeopleDialog groupId={id} variant="inline" isGuest={sessionIsGuest} />
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -461,6 +466,8 @@ function ReconciliationCard({
   groupId,
   transfers: transfersWithNames,
   activeMembers,
+  currentMemberId,
+  isGuest: isGuestUser,
 }: {
   balances: Map<string, number>;
   memberMap: Map<string, string>;
@@ -468,6 +475,8 @@ function ReconciliationCard({
   groupId: string;
   transfers: { fromName: string; toName: string; amount: number }[];
   activeMembers: { id: string; name: string }[];
+  currentMemberId?: string;
+  isGuest?: boolean;
 }) {
   const hasTransfers = transfersWithNames.length > 0;
   const sortedBalances = Array.from(balances.entries()).sort(
@@ -484,7 +493,7 @@ function ReconciliationCard({
         <div className="flex items-center justify-between">
           <CardTitle>Balances</CardTitle>
           <div className="flex items-center gap-2">
-            <AddExpenseDialog groupId={groupId} members={activeMembers} />
+            <AddExpenseDialog groupId={groupId} members={activeMembers} currentMemberId={currentMemberId} isGuest={isGuestUser} />
             {isOwner && hasTransfers && (
               <SettleUpButton groupId={groupId} transfers={transfersWithNames} />
             )}

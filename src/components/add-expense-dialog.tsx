@@ -17,9 +17,13 @@ type Member = { id: string; name: string };
 export function AddExpenseDialog({
   groupId,
   members,
+  currentMemberId,
+  isGuest,
 }: {
   groupId: string;
   members: Member[];
+  currentMemberId?: string;
+  isGuest?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -37,7 +41,7 @@ export function AddExpenseDialog({
         <DialogHeader>
           <DialogTitle>Add Expense</DialogTitle>
         </DialogHeader>
-        <ExpenseForm groupId={groupId} members={members} onSuccess={() => setOpen(false)} />
+        <ExpenseForm groupId={groupId} members={members} currentMemberId={currentMemberId} isGuest={isGuest} onSuccess={() => setOpen(false)} />
       </DialogContent>
     </Dialog>
   );

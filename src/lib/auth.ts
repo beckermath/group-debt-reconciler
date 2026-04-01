@@ -13,7 +13,7 @@ declare module "next-auth" {
       phoneNumber?: string | null;
       email?: string | null;
       image?: string | null;
-      isGuest?: boolean;
+      isGuest: boolean;
     };
   }
 }
@@ -30,7 +30,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         const guestId = credentials?.guestId as string;
 
-        // Guest sign-in: verify the user exists and is a guest
+        // Guest sign-in
         if (guestId) {
           const [guest] = await db
             .select()
@@ -39,11 +39,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
           if (!guest || !guest.isGuest) return null;
 
-          return {
-            id: guest.id,
-            name: guest.name,
-            isGuest: true,
-          };
+          return { id: guest.id, name: guest.name };
         }
 
         // Phone OTP sign-in
@@ -58,13 +54,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!user || user.phoneNumber !== phoneNumber) return null;
 
-        return {
-          id: user.id,
-          name: user.name,
-          phoneNumber: user.phoneNumber,
-          email: user.email,
-          isGuest: false,
-        };
+        return { id: user.id, name: user.name, email: user.email };
       },
     }),
   ],
@@ -73,19 +63,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/phone",
   },
   callbacks: {
-    jwt({ token, user }) {
+    async jwt({ token, user }) {
       if (user?.id) {
         token.sub = user.id;
-        token.phoneNumber = (user as { phoneNumber?: string }).phoneNumber;
-        token.isGuest = (user as { isGuest?: boolean }).isGuest ?? false;
+      }
+      // Always read isGuest and phoneNumber from DB for fresh data
+      if (token.sub) {
+        const [dbUser] = await db
+          .select({ isGuest: users.isGuest, phoneNumber: users.phoneNumber })
+          .from(users)
+          .where(eq(users.id, token.sub));
+        if (dbUser) {
+          token.isGuest = !!dbUser.isGuest;
+          token.phoneNumber = dbUser.phoneNumber;
+        }
       }
       return token;
     },
     session({ session, token }) {
       if (session.user) {
         session.user.id = token.sub as string;
-        session.user.phoneNumber = token.phoneNumber as string | undefined;
-        session.user.isGuest = token.isGuest as boolean | undefined;
+        session.user.phoneNumber = (token.phoneNumber as string) ?? null;
+        session.user.isGuest = !!token.isGuest;
       }
       return session;
     },

@@ -20,10 +20,14 @@ type Member = { id: string; name: string };
 export function ExpenseForm({
   groupId,
   members,
+  currentMemberId,
+  isGuest,
   onSuccess,
 }: {
   groupId: string;
   members: Member[];
+  currentMemberId?: string;
+  isGuest?: boolean;
   onSuccess?: () => void;
 }) {
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(
@@ -33,6 +37,12 @@ export function ExpenseForm({
   const [isCustomSplit, setIsCustomSplit] = useState(false);
   const [customAmounts, setCustomAmounts] = useState<Record<string, string>>({});
   const [amount, setAmount] = useState("");
+
+  function memberLabel(m: Member): string {
+    if (!currentMemberId) return m.name;
+    if (m.id === currentMemberId) return isGuest ? "Me" : `${m.name} (Me)`;
+    return m.name;
+  }
 
   function toggleMember(id: string) {
     setSelectedMembers((prev) => {
@@ -136,13 +146,16 @@ export function ExpenseForm({
         <Select value={paidBy} onValueChange={(v) => { if (v) setPaidBy(v); }}>
           <SelectTrigger className="w-full">
             <SelectValue>
-              {members.find((m) => m.id === paidBy)?.name ?? "Select member"}
+              {(() => {
+                const m = members.find((m) => m.id === paidBy);
+                return m ? memberLabel(m) : "Select member";
+              })()}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {members.map((m) => (
               <SelectItem key={m.id} value={m.id}>
-                {m.name}
+                {memberLabel(m)}
               </SelectItem>
             ))}
           </SelectContent>

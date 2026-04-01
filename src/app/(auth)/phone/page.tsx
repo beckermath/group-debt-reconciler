@@ -74,7 +74,11 @@ export default function PhonePage() {
         </CardContent>
       </Card>
 
-      {!isGuest && (
+      {isGuest ? (
+        <p className="text-xs text-muted-foreground text-center">
+          Your existing groups and expenses will be preserved.
+        </p>
+      ) : (
         <>
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
@@ -91,12 +95,6 @@ export default function PhonePage() {
             </Button>
           </form>
         </>
-      )}
-
-      {isGuest && (
-        <p className="text-xs text-muted-foreground text-center">
-          Your existing groups and expenses will be preserved.
-        </p>
       )}
     </div>
   );

@@ -10,7 +10,8 @@ export async function registerAndLogin(
   page: import("@playwright/test").Page,
   name: string = "E2E Tester"
 ) {
-  const phone = `+1${Date.now().toString().slice(-10)}`;
+  // 10 digits — the +1 prefix is added by the input component
+  const phone = Date.now().toString().slice(-10);
 
   await page.goto("/phone");
   await page.getByLabel("Phone number").fill(phone);

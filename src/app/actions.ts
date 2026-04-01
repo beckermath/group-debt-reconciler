@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { signIn } from "@/lib/auth";
-import { requireAuthWithRateLimit, requireGroupAccess, requireGroupOwner } from "@/lib/auth-helpers";
+import { requireAuthWithRateLimit, requireGroupAccess, requireGroupOwner, requireNonGuest } from "@/lib/auth-helpers";
 import { inviteRateLimit, searchRateLimit, directInviteRateLimit } from "@/lib/rate-limit";
 import { db } from "@/db";
 import { users } from "@/db/schema";
@@ -273,6 +273,7 @@ export async function createInviteLink(formData: FormData) {
   const groupId = formData.get("groupId") as string;
   if (!groupId) return { error: "Missing group" };
   try {
+    await requireNonGuest();
     const { userId } = await requireGroupAccess(groupId);
     return await inviteService.createInviteLink(groupId, userId);
   } catch (error) {
@@ -332,6 +333,7 @@ export async function undoSettlement(formData: FormData) {
 
 export async function searchUsers(query: string, groupId: string) {
   try {
+    await requireNonGuest();
     const { userId } = await requireGroupAccess(groupId);
     const { success } = await searchRateLimit.limit(userId);
     if (!success) return { error: "Too many searches. Please slow down.", results: [] };
@@ -348,6 +350,7 @@ export async function sendDirectInvite(formData: FormData) {
   const targetUserId = formData.get("userId") as string;
   if (!groupId || !targetUserId) return { error: "Missing fields" };
   try {
+    await requireNonGuest();
     const { userId } = await requireGroupAccess(groupId);
     const { success } = await directInviteRateLimit.limit(userId);
     if (!success) return { error: "Too many invites. Please try again later." };

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useIsGuest } from "@/hooks/use-is-guest";
 import { UserPlus, Search, Check, LoaderCircle, Link2, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,7 @@ export function AddPeopleDialog({
   variant?: "header" | "inline";
 }) {
   const router = useRouter();
+  const { isGuest } = useIsGuest();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -166,73 +168,74 @@ export function AddPeopleDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by name or phone..."
-              value={query}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="pl-9"
-              autoFocus
-            />
-          </div>
+          {/* Search — hidden for guest users */}
+          {!isGuest && (
+            <>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name or phone..."
+                  value={query}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="pl-9"
+                  autoFocus
+                />
+              </div>
+
+              {searching && (
+                <div className="flex items-center justify-center py-3">
+                  <LoaderCircle className="size-5 animate-spin text-muted-foreground" />
+                </div>
+              )}
+
+              {results.length > 0 && (
+                <ul className="divide-y max-h-48 overflow-y-auto">
+                  {results.map((user) => {
+                    const isSent = sentIds.has(user.id);
+                    const isSending = sendingId === user.id;
+                    return (
+                      <li key={user.id} className="flex items-center justify-between py-2.5 gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{user.name}</p>
+                          <p className="text-xs text-muted-foreground">{user.maskedPhone}</p>
+                        </div>
+                        {isSent ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-owed shrink-0">
+                            <Check className="size-3.5" />
+                            Invited
+                          </span>
+                        ) : (
+                          <Button variant="outline" size="sm" onClick={() => handleInvite(user.id)} disabled={isSending}>
+                            {isSending && <LoaderCircle className="size-3.5 animate-spin" />}
+                            Invite
+                          </Button>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+
+              {showGuestFallback && (
+                <p className="text-xs text-muted-foreground text-center py-1">
+                  No users found for &ldquo;{query}&rdquo;
+                </p>
+              )}
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-background px-2 text-muted-foreground">or</span>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Feedback */}
           {error && <p className="text-sm text-destructive">{error}</p>}
           {success && <p className="text-sm text-owed">{success}</p>}
-
-          {/* Search results */}
-          {searching && (
-            <div className="flex items-center justify-center py-3">
-              <LoaderCircle className="size-5 animate-spin text-muted-foreground" />
-            </div>
-          )}
-
-          {results.length > 0 && (
-            <ul className="divide-y max-h-48 overflow-y-auto">
-              {results.map((user) => {
-                const isSent = sentIds.has(user.id);
-                const isSending = sendingId === user.id;
-                return (
-                  <li key={user.id} className="flex items-center justify-between py-2.5 gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{user.name}</p>
-                      <p className="text-xs text-muted-foreground">{user.maskedPhone}</p>
-                    </div>
-                    {isSent ? (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-owed shrink-0">
-                        <Check className="size-3.5" />
-                        Invited
-                      </span>
-                    ) : (
-                      <Button variant="outline" size="sm" onClick={() => handleInvite(user.id)} disabled={isSending}>
-                        {isSending && <LoaderCircle className="size-3.5 animate-spin" />}
-                        Invite
-                      </Button>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-
-          {/* No results — show guest fallback */}
-          {showGuestFallback && (
-            <p className="text-xs text-muted-foreground text-center py-1">
-              No users found for &ldquo;{query}&rdquo;
-            </p>
-          )}
-
-          {/* Divider */}
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs">
-              <span className="bg-background px-2 text-muted-foreground">or</span>
-            </div>
-          </div>
 
           {/* Add as guest */}
           <div className="space-y-2">
@@ -255,29 +258,40 @@ export function AddPeopleDialog({
             </div>
           </div>
 
-          {/* Divider */}
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs">
-              <span className="bg-background px-2 text-muted-foreground">or</span>
-            </div>
-          </div>
+          {/* Invite link — hidden for guest users */}
+          {!isGuest && (
+            <>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-background px-2 text-muted-foreground">or</span>
+                </div>
+              </div>
+            </>
+          )}
 
-          {/* Invite link */}
-          {inviteUrl ? (
-            <div className="flex gap-2">
-              <Input value={inviteUrl} readOnly className="text-xs" />
-              <Button variant="outline" size="sm" onClick={handleCopy}>
-                {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+          {!isGuest && (
+            inviteUrl ? (
+              <div className="flex gap-2">
+                <Input value={inviteUrl} readOnly className="text-xs" />
+                <Button variant="outline" size="sm" onClick={handleCopy}>
+                  {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+                </Button>
+              </div>
+            ) : (
+              <Button variant="ghost" size="sm" className="w-full" onClick={handleGenerateLink} disabled={linkLoading}>
+                <Link2 className="size-4" data-icon="inline-start" />
+                {linkLoading ? "Generating..." : "Generate invite link"}
               </Button>
-            </div>
-          ) : (
-            <Button variant="ghost" size="sm" className="w-full" onClick={handleGenerateLink} disabled={linkLoading}>
-              <Link2 className="size-4" data-icon="inline-start" />
-              {linkLoading ? "Generating..." : "Generate invite link"}
-            </Button>
+            )
+          )}
+
+          {isGuest && (
+            <p className="text-xs text-muted-foreground text-center">
+              <a href="/phone" className="text-primary hover:underline">Sign up</a> to search and invite real users.
+            </p>
           )}
         </div>
       </DialogContent>

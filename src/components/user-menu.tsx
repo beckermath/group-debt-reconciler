@@ -5,7 +5,26 @@ import { Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
-export function UserMenu({ name }: { name: string }) {
+export function UserMenu({ name, isGuest }: { name: string; isGuest?: boolean }) {
+  if (isGuest) {
+    return (
+      <div className="flex items-center gap-1">
+        <Link href="/phone">
+          <Button variant="default" size="sm">
+            Sign up
+          </Button>
+        </Link>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => signOut({ callbackUrl: "/phone" })}
+        >
+          Sign out
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center gap-1">
       <Link href="/settings">

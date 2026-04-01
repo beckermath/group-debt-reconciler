@@ -17,8 +17,9 @@ export default async function Home() {
   const session = await auth();
   if (!session?.user?.id) redirect("/phone");
 
+  const isGuest = session.user.isGuest ?? false;
   const groups = await groupService.getUserGroupSummaries(session.user.id);
-  const pendingInvites = await directInviteService.getPendingInvitesForUser(session.user.id);
+  const pendingInvites = isGuest ? [] : await directInviteService.getPendingInvitesForUser(session.user.id);
 
   // Compute global balance
   const totalOwed = groups.reduce(

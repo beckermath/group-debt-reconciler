@@ -48,3 +48,11 @@ export async function requireGroupOwner(groupId: string) {
   }
   return result;
 }
+
+export async function requireNonGuest() {
+  const { session, userId } = await requireAuth();
+  if (session.user.isGuest) {
+    throw new Error("Guest accounts cannot perform this action. Please sign up.");
+  }
+  return { session, userId };
+}

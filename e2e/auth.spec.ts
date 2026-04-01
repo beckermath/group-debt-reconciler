@@ -13,7 +13,7 @@ test.describe("Authentication", () => {
   });
 
   test("can sign out and sign back in", async ({ page }) => {
-    const phone = `+1555${Date.now().toString().slice(-7)}`;
+    const phone = `555${Date.now().toString().slice(-7)}`;
 
     // Register
     await page.goto("/phone");

@@ -33,6 +33,7 @@ test.describe("Authentication", () => {
 
     // Sign back in with same phone
     await page.getByLabel("Phone number").fill(phone);
+    await expect(page.getByRole("button", { name: "Send code" })).toBeEnabled({ timeout: 5000 });
     await page.getByRole("button", { name: "Send code" }).click();
     await expect(page).toHaveURL(/\/phone\/verify/, { timeout: 10000 });
     await page.getByLabel("Verification code").fill("000000");

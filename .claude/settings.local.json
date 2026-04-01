@@ -14,7 +14,24 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(git checkout:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(ls:*)",
+      "Bash(curl -s 'https://api.github.com/repos/shadcn-ui/ui/contents/apps/v4/registry')",
+      "Bash(python3 -c \"import json,sys; [print\\(x[''''name'''']\\) for x in json.load\\(sys.stdin\\)]\")",
+      "Bash(PLAYWRIGHT_TEST=1 npx playwright test --reporter=list)",
+      "Bash(lsof -ti:3000)",
+      "Bash(xargs kill:*)",
+      "Bash(git fetch:*)",
+      "Bash(git merge:*)",
+      "Bash(PLAYWRIGHT_TEST=1 npx playwright test e2e/groups.spec.ts --reporter=list)",
+      "Bash(PLAYWRIGHT_TEST=1 npx playwright test e2e/expenses.spec.ts -g 'can add an equal' --reporter=list)",
+      "Bash(PLAYWRIGHT_TEST=1 npx playwright test e2e/expenses.spec.ts -g 'can add an equal' --reporter=list --trace on)",
+      "Bash(cat:*)",
+      "Bash(cat -n \"/Users/beckermathie/Documents/code/rekn/src/app/\\(auth\\)/phone/page.tsx\")",
+      "Bash(cat -n \"/Users/beckermathie/Documents/code/rekn/src/app/\\(auth\\)/actions.ts\")",
+      "Bash(cat -n \"/Users/beckermathie/Documents/code/rekn/src/app/\\(auth\\)/phone/verify/page.tsx\")",
+      "Bash(PLAYWRIGHT_TEST=1 npx playwright test --reporter=list --workers=1)",
+      "Bash(grep:*)"
     ]
   }
 }

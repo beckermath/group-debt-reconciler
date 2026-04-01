@@ -31,7 +31,8 @@ test.describe("Authentication", () => {
     await page.getByRole("button", { name: "Sign out", exact: true }).click();
     await expect(page).toHaveURL(/\/phone/, { timeout: 10000 });
 
-    // Sign back in with same phone
+    // Sign back in with same phone — wait for hydration after redirect
+    await expect(page.getByText("Sign in with your phone")).toBeVisible({ timeout: 10000 });
     await page.getByLabel("Phone number").fill(phone);
     await expect(page.getByRole("button", { name: "Send code" })).toBeEnabled({ timeout: 5000 });
     await page.getByRole("button", { name: "Send code" }).click();

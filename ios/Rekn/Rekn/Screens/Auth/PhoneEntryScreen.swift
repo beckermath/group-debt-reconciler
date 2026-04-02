@@ -1,0 +1,84 @@
+import SwiftUI
+
+struct PhoneEntryScreen: View {
+    @State private var phone = ""
+    @State private var showingVerify = false
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 32) {
+                Spacer()
+
+                // Logo
+                VStack(spacing: 8) {
+                    Text("Rekn")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                        .foregroundStyle(Color.accentColor)
+                    Text("Reconcile group debts simply")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                // Phone input
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Phone number")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    HStack(spacing: 0) {
+                        Text("+1")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(Color(.systemGray5))
+                            .clipShape(UnevenRoundedRectangle(topLeadingRadius: 8, bottomLeadingRadius: 8))
+                        TextField("(212) 555-1234", text: $phone)
+                            .keyboardType(.phonePad)
+                            .padding(10)
+                            .background(Color(.systemGray6))
+                            .clipShape(UnevenRoundedRectangle(bottomTrailingRadius: 8, topTrailingRadius: 8))
+                            .onChange(of: phone) { _, newValue in
+                                phone = String(newValue.filter(\.isNumber).prefix(10))
+                            }
+                    }
+                    Text("We'll send you a 6-digit verification code.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Button {
+                    showingVerify = true
+                } label: {
+                    Text("Send code")
+                        .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .disabled(phone.count < 10)
+
+                // Divider
+                HStack {
+                    Rectangle().fill(Color(.separator)).frame(height: 0.5)
+                    Text("or").font(.caption).foregroundStyle(.secondary)
+                    Rectangle().fill(Color(.separator)).frame(height: 0.5)
+                }
+
+                Button("Try as guest") {}
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+            }
+            .padding(.horizontal, 32)
+            .navigationDestination(isPresented: $showingVerify) {
+                OTPVerifyScreen(phoneNumber: "+1\(phone)")
+            }
+        }
+    }
+}
+
+#Preview {
+    PhoneEntryScreen()
+}

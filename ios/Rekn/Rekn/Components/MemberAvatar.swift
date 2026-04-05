@@ -3,6 +3,7 @@ import SwiftUI
 struct MemberAvatar: View {
     let name: String
     var size: CGFloat = 32
+    var selected: Bool = false
 
     private let gradients: [(Color, Color)] = [
         (Color(red: 0.36, green: 0.13, blue: 0.73), Color(red: 0.34, green: 0.16, blue: 0.86)),
@@ -38,6 +39,21 @@ struct MemberAvatar: View {
                 .foregroundStyle(.white)
         }
         .frame(width: size, height: size)
+        .overlay {
+            if selected {
+                Circle()
+                    .stroke(Color.accentColor, lineWidth: 2.5)
+                    .frame(width: size + 4, height: size + 4)
+            }
+        }
+        .overlay(alignment: .bottomTrailing) {
+            if selected {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: size * 0.32))
+                    .foregroundStyle(.white, Color.accentColor)
+                    .offset(x: 2, y: 2)
+            }
+        }
     }
 }
 

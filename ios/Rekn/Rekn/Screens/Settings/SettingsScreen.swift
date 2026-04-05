@@ -1,31 +1,68 @@
 import SwiftUI
 
 struct SettingsScreen: View {
+    @Environment(AuthManager.self) private var authManager
+
+    private var userName: String { authManager.currentUser?.name ?? "User" }
+    private var userPhone: String { authManager.currentUser?.phoneNumber ?? "No phone" }
+    private var isGuest: Bool { authManager.isGuest }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
                 // Profile card
                 HStack(spacing: 14) {
-                    MemberAvatar(name: "Alice Johnson", size: 48)
+                    MemberAvatar(name: userName, size: 48)
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Alice Johnson")
+                        Text(userName)
                             .font(.subheadline)
                             .fontWeight(.semibold)
-                        Text("+1 (212) 555-1234")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        if isGuest {
+                            Text("Guest account")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text(userPhone)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     Spacer()
                 }
                 .padding(16)
-                .background(.background, in: .rect(cornerRadius: 12))
-                .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
+                .background(.background, in: .rect(cornerRadius: 14))
+                .shadow(color: .black.opacity(0.05), radius: 6, y: 3)
+
+                // Guest upgrade prompt
+                if isGuest {
+                    SectionCard(header: "Upgrade") {
+                        VStack(spacing: 8) {
+                            Text("Sign up to save your data and invite friends")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Button {
+                                // TODO: navigate to phone entry for upgrade
+                            } label: {
+                                Text("Sign up with phone")
+                                    .fontWeight(.semibold)
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.regular)
+                        }
+                        .padding(12)
+                    }
+                }
 
                 // Account section
                 SectionCard(header: "Account") {
-                    SettingsRow(title: "Edit name", showChevron: true) {}
-                    Divider().padding(.leading)
-                    SettingsRow(title: "Sign out", isDestructive: true) {}
+                    if !isGuest {
+                        SettingsRow(title: "Edit name", showChevron: true) {}
+                        Divider().padding(.leading)
+                    }
+                    SettingsRow(title: "Sign out", isDestructive: true) {
+                        Task { await authManager.signOut() }
+                    }
                 }
 
                 // App section
@@ -42,71 +79,9 @@ struct SettingsScreen: View {
     }
 }
 
-// MARK: - Section Card
-
-struct SectionCard<Content: View>: View {
-    let header: String
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(header)
-                .font(.caption)
-                .fontWeight(.semibold)
-                .textCase(.uppercase)
-                .tracking(0.5)
-                .foregroundStyle(.secondary)
-                .padding(.leading, 4)
-
-            VStack(spacing: 0) {
-                content
-            }
-            .padding(.horizontal, 4)
-            .background(.background, in: .rect(cornerRadius: 12))
-            .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
-        }
-    }
-}
-
-// MARK: - Settings Row
-
-struct SettingsRow: View {
-    let title: String
-    var detail: String? = nil
-    var showChevron: Bool = false
-    var isDestructive: Bool = false
-    var action: (() -> Void)? = nil
-
-    var body: some View {
-        Button {
-            action?()
-        } label: {
-            HStack {
-                Text(title)
-                    .font(.subheadline)
-                    .foregroundStyle(isDestructive ? .red : .primary)
-                Spacer()
-                if let detail {
-                    Text(detail)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                if showChevron {
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundStyle(.quaternary)
-                }
-            }
-            .padding(.vertical, 12)
-            .padding(.horizontal, 12)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-}
-
 #Preview {
     NavigationStack {
         SettingsScreen()
+            .environment(AuthManager())
     }
 }

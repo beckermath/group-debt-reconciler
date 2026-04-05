@@ -1,7 +1,11 @@
 import SwiftUI
 
 struct NameSetupScreen: View {
+    let phoneNumber: String
+    @Environment(AuthManager.self) private var authManager
     @State private var name = ""
+    @State private var isSubmitting = false
+    @State private var error: String?
 
     var body: some View {
         VStack(spacing: 32) {
@@ -26,26 +30,53 @@ struct NameSetupScreen: View {
                     .autocorrectionDisabled()
             }
 
+            if let error {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+
             Button {
-                // Complete setup
+                Task { await completeSetup() }
             } label: {
-                Text("Get started")
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
+                if isSubmitting {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                } else {
+                    Text("Get started")
+                        .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
+                }
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
-            .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+            .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || isSubmitting)
 
             Spacer()
         }
         .padding(.horizontal, 32)
         .navigationBarBackButtonHidden()
     }
+
+    private func completeSetup() async {
+        error = nil
+        isSubmitting = true
+        defer { isSubmitting = false }
+
+        do {
+            try await authManager.completeSetup(name: name.trimmingCharacters(in: .whitespaces), phoneNumber: phoneNumber)
+            // AuthManager sets isAuthenticated = true, which swaps the root view
+        } catch let apiError as APIError {
+            error = apiError.errorDescription
+        } catch {
+            self.error = "Something went wrong"
+        }
+    }
 }
 
 #Preview {
     NavigationStack {
-        NameSetupScreen()
+        NameSetupScreen(phoneNumber: "+12125551234")
+            .environment(AuthManager())
     }
 }

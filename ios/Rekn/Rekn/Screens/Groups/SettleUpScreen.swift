@@ -2,6 +2,8 @@ import SwiftUI
 
 struct SettleUpScreen: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(GroupStore.self) private var groupStore
+    let groupId: String
     let transfers: [Transfer]
     @State private var isSubmitting = false
     @State private var showSuccess = false
@@ -109,18 +111,26 @@ struct SettleUpScreen: View {
 
     private func submit() {
         isSubmitting = true
-        // TODO: API call
-        withAnimation {
-            showSuccess = true
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            dismiss()
+        Task {
+            do {
+                try await groupStore.settleUp(groupId: groupId)
+                await groupStore.loadGroupDetail(id: groupId)
+                withAnimation {
+                    showSuccess = true
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    dismiss()
+                }
+            } catch {
+                isSubmitting = false
+            }
         }
     }
 }
 
 #Preview {
     NavigationStack {
-        SettleUpScreen(transfers: Transfer.previews)
+        SettleUpScreen(groupId: "test", transfers: Transfer.previews)
+            .environment(GroupStore())
     }
 }

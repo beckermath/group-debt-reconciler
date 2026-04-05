@@ -2,9 +2,13 @@ import SwiftUI
 
 struct OTPVerifyScreen: View {
     let phoneNumber: String
+    @Environment(AuthManager.self) private var authManager
     @State private var code = ""
+    @State private var isSubmitting = false
+    @State private var error: String?
     @State private var resendTimer = 60
     @State private var showingSetup = false
+    @State private var verifiedPhone = ""
 
     private var maskedPhone: String {
         guard phoneNumber.count > 4 else { return phoneNumber }
@@ -38,16 +42,27 @@ struct OTPVerifyScreen: View {
                     code = String(newValue.filter(\.isNumber).prefix(6))
                 }
 
+            if let error {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+
             Button {
-                showingSetup = true
+                Task { await verify() }
             } label: {
-                Text("Verify")
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
+                if isSubmitting {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                } else {
+                    Text("Verify")
+                        .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
+                }
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
-            .disabled(code.count != 6)
+            .disabled(code.count != 6 || isSubmitting)
 
             if resendTimer > 0 {
                 Text("Resend code in \(resendTimer)s")
@@ -55,7 +70,7 @@ struct OTPVerifyScreen: View {
                     .foregroundStyle(.secondary)
             } else {
                 Button("Resend code") {
-                    resendTimer = 60
+                    Task { await resend() }
                 }
                 .font(.caption)
             }
@@ -64,7 +79,7 @@ struct OTPVerifyScreen: View {
         }
         .padding(.horizontal, 32)
         .navigationDestination(isPresented: $showingSetup) {
-            NameSetupScreen()
+            NameSetupScreen(phoneNumber: verifiedPhone)
         }
         .task {
             while resendTimer > 0 {
@@ -73,10 +88,45 @@ struct OTPVerifyScreen: View {
             }
         }
     }
+
+    private func verify() async {
+        error = nil
+        isSubmitting = true
+        defer { isSubmitting = false }
+
+        do {
+            let result = try await authManager.verifyOtp(phoneNumber: phoneNumber, code: code)
+            switch result {
+            case .existingUser:
+                // AuthManager already set isAuthenticated = true
+                break
+            case .newUser(let phone):
+                verifiedPhone = phone
+                showingSetup = true
+            }
+        } catch let apiError as APIError {
+            error = apiError.errorDescription
+        } catch {
+            self.error = "Something went wrong"
+        }
+    }
+
+    private func resend() async {
+        error = nil
+        do {
+            try await authManager.sendOtp(phoneNumber: phoneNumber)
+            resendTimer = 60
+        } catch let apiError as APIError {
+            error = apiError.errorDescription
+        } catch {
+            self.error = "Failed to resend"
+        }
+    }
 }
 
 #Preview {
     NavigationStack {
         OTPVerifyScreen(phoneNumber: "+12125551234")
+            .environment(AuthManager())
     }
 }

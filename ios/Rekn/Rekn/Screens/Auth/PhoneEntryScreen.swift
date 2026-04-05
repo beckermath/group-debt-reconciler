@@ -1,8 +1,12 @@
 import SwiftUI
 
 struct PhoneEntryScreen: View {
+    @Environment(AuthManager.self) private var authManager
     @State private var phone = ""
+    @State private var isSubmitting = false
+    @State private var error: String?
     @State private var showingVerify = false
+    @FocusState private var phoneFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -35,6 +39,7 @@ struct PhoneEntryScreen: View {
                             .clipShape(UnevenRoundedRectangle(topLeadingRadius: 8, bottomLeadingRadius: 8))
                         TextField("(212) 555-1234", text: $phone)
                             .keyboardType(.phonePad)
+                            .focused($phoneFocused)
                             .padding(10)
                             .background(Color(.systemGray6))
                             .clipShape(UnevenRoundedRectangle(bottomTrailingRadius: 8, topTrailingRadius: 8))
@@ -47,16 +52,27 @@ struct PhoneEntryScreen: View {
                         .foregroundStyle(.secondary)
                 }
 
+                if let error {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+
                 Button {
-                    showingVerify = true
+                    Task { await sendCode() }
                 } label: {
-                    Text("Send code")
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity)
+                    if isSubmitting {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        Text("Send code")
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                    }
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
-                .disabled(phone.count < 10)
+                .disabled(phone.count < 10 || isSubmitting)
 
                 // Divider
                 HStack {
@@ -65,9 +81,13 @@ struct PhoneEntryScreen: View {
                     Rectangle().fill(Color(.separator)).frame(height: 0.5)
                 }
 
-                Button("Try as guest") {}
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                Button {
+                    Task { await startGuest() }
+                } label: {
+                    Text("Try as guest")
+                }
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
 
                 Spacer()
             }
@@ -75,10 +95,38 @@ struct PhoneEntryScreen: View {
             .navigationDestination(isPresented: $showingVerify) {
                 OTPVerifyScreen(phoneNumber: "+1\(phone)")
             }
+            .onAppear { phoneFocused = true }
+        }
+    }
+
+    private func sendCode() async {
+        error = nil
+        isSubmitting = true
+        defer { isSubmitting = false }
+
+        do {
+            try await authManager.sendOtp(phoneNumber: "+1\(phone)")
+            showingVerify = true
+        } catch let apiError as APIError {
+            error = apiError.errorDescription
+        } catch {
+            self.error = "Something went wrong"
+        }
+    }
+
+    private func startGuest() async {
+        error = nil
+        do {
+            try await authManager.startGuestSession()
+        } catch let apiError as APIError {
+            error = apiError.errorDescription
+        } catch {
+            self.error = "Something went wrong"
         }
     }
 }
 
 #Preview {
     PhoneEntryScreen()
+        .environment(AuthManager())
 }

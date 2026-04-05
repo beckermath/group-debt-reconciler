@@ -8,6 +8,14 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   const auth = await withAuth(request);
   if (auth instanceof Response) return auth;
 
+  const url = new URL(request.url);
+  const include = url.searchParams.get("include");
+
+  if (include === "summary") {
+    const summaries = await groupService.getUserGroupSummaries(auth.user.userId);
+    return res.ok(summaries);
+  }
+
   const groups = await groupService.getUserGroups(auth.user.userId);
   return res.ok(groups);
 });

@@ -1,8 +1,13 @@
 import SwiftUI
 
 struct GroupsListScreen: View {
-    let groups = GroupSummary.previews
+    @Environment(GroupStore.self) private var groupStore
     @State private var showingCreateGroup = false
+
+    private var groups: [GroupSummary] {
+        if case .loaded(let g) = groupStore.groupsState { return g }
+        return []
+    }
 
     private var totalOwed: Int {
         groups.reduce(0) { $0 + max($1.userBalanceCents, 0) }
@@ -13,41 +18,31 @@ struct GroupsListScreen: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                // Global balance summary
-                if totalOwed > 0 || totalOwes > 0 {
-                    HStack(spacing: 12) {
-                        if totalOwed > 0 {
-                            BalanceSummaryCard(
-                                label: "You are owed",
-                                amount: totalOwed,
-                                color: .green
-                            )
-                        }
-                        if totalOwes > 0 {
-                            BalanceSummaryCard(
-                                label: "You owe",
-                                amount: totalOwes,
-                                color: .orange
-                            )
-                        }
-                    }
-                    .padding(.horizontal)
-                }
+        Group {
+            switch groupStore.groupsState {
+            case .idle, .loading:
+                ProgressView("Loading groups...")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                // Group cards
-                LazyVStack(spacing: 10) {
-                    ForEach(groups) { group in
-                        NavigationLink(value: group.id) {
-                            GroupCard(group: group)
-                        }
-                        .buttonStyle(.plain)
+            case .failed(let message):
+                VStack(spacing: 12) {
+                    Text("Something went wrong")
+                        .font(.headline)
+                    Text(message)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Button("Try again") {
+                        Task { await groupStore.loadGroups() }
                     }
                 }
-                .padding(.horizontal)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            case .loaded(let groups) where groups.isEmpty:
+                emptyState
+
+            case .loaded:
+                groupsList
             }
-            .padding(.top, 8)
         }
         .navigationTitle("Your Groups")
         .navigationDestination(for: String.self) { groupId in
@@ -62,37 +57,106 @@ struct GroupsListScreen: View {
                 }
             }
         }
-        .sheet(isPresented: $showingCreateGroup) {
-            GroupSetupScreen()
+        .navigationDestination(isPresented: $showingCreateGroup) {
+            GroupNameScreen()
+        }
+        .task {
+            await groupStore.loadGroups()
+        }
+        .refreshable {
+            await groupStore.loadGroups()
         }
     }
-}
 
-// MARK: - Balance Summary Card
+    // MARK: - Groups List
 
-private struct BalanceSummaryCard: View {
-    let label: String
-    let amount: Int
-    let color: Color
+    private var groupsList: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                // Balance summary
+                if totalOwed > 0 || totalOwes > 0 {
+                    balanceSummaryRow
+                        .padding(.top, 4)
+                }
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label)
-                .font(.caption)
-                .fontWeight(.medium)
-                .foregroundStyle(color.opacity(0.8))
-            Text("$\(String(format: "%.2f", Double(amount) / 100))")
-                .font(.title2)
-                .fontWeight(.bold)
-                .foregroundStyle(color)
+                // Group cards
+                ForEach(groups) { group in
+                    NavigationLink(value: group.id) {
+                        GroupCard(group: group)
+                    }
+                    .buttonStyle(CardPressStyle())
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 20)
+            .padding(.bottom, 24)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(color.opacity(0.08), in: .rect(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(color.opacity(0.15), lineWidth: 1)
-        )
+    }
+
+    // MARK: - Empty State
+
+    private var emptyState: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "person.3")
+                .font(.system(size: 48))
+                .foregroundStyle(.secondary.opacity(0.3))
+            Text("No groups yet")
+                .font(.title3)
+                .fontWeight(.semibold)
+            Text("Create a group to start splitting expenses")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Button {
+                showingCreateGroup = true
+            } label: {
+                Text("Create Group")
+                    .fontWeight(.semibold)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+        }
+        .frame(maxWidth: 260)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - Balance Summary Row
+
+    private var balanceSummaryRow: some View {
+        HStack(spacing: 0) {
+            if totalOwed > 0 {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("You are owed")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("+\(formatCents(totalOwed))")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.green)
+                }
+            }
+
+            if totalOwed > 0 && totalOwes > 0 {
+                Text("·")
+                    .font(.caption)
+                    .foregroundStyle(.quaternary)
+                    .padding(.horizontal, 12)
+            }
+
+            if totalOwes > 0 {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("You owe")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(formatCents(totalOwes))
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.orange)
+                }
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, 4)
     }
 }
 
@@ -101,64 +165,50 @@ private struct BalanceSummaryCard: View {
 private struct GroupCard: View {
     let group: GroupSummary
 
-    private var statusColor: Color {
-        switch group.status {
-        case .hasBalances: .orange
-        case .settled: .green
-        case .noExpenses: .gray
-        }
-    }
-
     var body: some View {
         HStack(spacing: 12) {
-            // Avatar stack with status dot
-            ZStack(alignment: .bottomTrailing) {
-                HStack(spacing: -8) {
-                    ForEach(group.memberNames.prefix(3), id: \.self) { name in
-                        MemberAvatar(name: name, size: 36)
-                            .overlay(Circle().stroke(.background, lineWidth: 2))
-                    }
-                    if group.memberCount > 3 {
-                        ZStack {
-                            Circle()
-                                .fill(Color(.systemGray5))
-                            Text("+\(group.memberCount - 3)")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(.secondary)
-                        }
-                        .frame(width: 36, height: 36)
-                        .overlay(Circle().stroke(.background, lineWidth: 2))
-                    }
+            // Avatar cluster
+            HStack(spacing: -8) {
+                ForEach(group.memberNames.prefix(2), id: \.self) { name in
+                    MemberAvatar(name: name, size: 34)
+                        .overlay(Circle().stroke(Color(.systemBackground), lineWidth: 2))
                 }
-                Circle()
-                    .fill(statusColor)
-                    .frame(width: 10, height: 10)
-                    .overlay(Circle().stroke(.background, lineWidth: 2))
+                if group.memberCount > 2 {
+                    ZStack {
+                        Circle()
+                            .fill(Color(.systemGray5))
+                        Text("+\(group.memberCount - 2)")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(width: 34, height: 34)
+                    .overlay(Circle().stroke(Color(.systemBackground), lineWidth: 2))
+                }
             }
 
             // Info
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(group.name)
                     .font(.subheadline)
                     .fontWeight(.semibold)
-                HStack(spacing: 8) {
-                    Label("\(group.memberCount)", systemImage: "person.2")
-                    if group.expenseCount > 0 {
-                        Label("\(group.expenseCount)", systemImage: "receipt")
-                    }
-                    if let date = group.lastActivityAt {
-                        Text(date.relativeFormatted)
-                    }
+                    .lineLimit(1)
+                    .foregroundStyle(.primary)
+                if let date = group.lastActivityAt {
+                    Text(date.relativeFormatted)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("No expenses yet")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
-                .font(.caption)
-                .foregroundStyle(.secondary)
             }
 
             Spacer()
 
             // Balance
             if group.userBalanceCents != 0 {
-                VStack(alignment: .trailing, spacing: 1) {
+                VStack(alignment: .trailing, spacing: 2) {
                     Text(formatCents(group.userBalanceCents, showSign: true))
                         .font(.subheadline)
                         .fontWeight(.semibold)
@@ -173,40 +223,26 @@ private struct GroupCard: View {
                     .fontWeight(.medium)
                     .foregroundStyle(.green)
             }
-
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(.quaternary)
         }
-        .padding(14)
-        .background(.background, in: .rect(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.04), radius: 4, y: 2)
+        .padding(16)
+        .background(.background, in: .rect(cornerRadius: 14))
+        .shadow(color: .black.opacity(0.05), radius: 6, y: 3)
     }
 }
 
-// MARK: - Helpers
+// MARK: - Card Press Style
 
-func formatCents(_ cents: Int, showSign: Bool = false) -> String {
-    let value = Double(abs(cents)) / 100
-    let formatted = String(format: "$%.2f", value)
-    if showSign && cents > 0 { return "+\(formatted)" }
-    if showSign && cents < 0 { return "-\(formatted)" }
-    return formatted
-}
-
-extension Date {
-    var relativeFormatted: String {
-        let days = Calendar.current.dateComponents([.day], from: self, to: Date()).day ?? 0
-        if days == 0 { return "Today" }
-        if days == 1 { return "Yesterday" }
-        if days < 7 { return "\(days)d ago" }
-        if days < 30 { return "\(days / 7)w ago" }
-        return formatted(.dateTime.month(.abbreviated).day())
+struct CardPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
     }
 }
 
 #Preview {
     NavigationStack {
         GroupsListScreen()
+            .environment(GroupStore())
     }
 }

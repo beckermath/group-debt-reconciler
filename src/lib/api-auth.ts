@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { apiKeys } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
+import { verifyMobileToken } from "@/lib/mobile-jwt";
 
 export interface ApiUser {
   userId: string;
@@ -31,17 +32,27 @@ export async function authenticateRequest(
     return { userId: token.sub, authMethod: "jwt" };
   }
 
-  // Try Bearer token (API key)
+  // Try Bearer token (mobile JWT or API key)
   const authHeader = request.headers.get("authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     return UNAUTHORIZED();
   }
 
-  const rawKey = authHeader.slice(7);
-  if (!rawKey || rawKey.length < 16) {
+  const rawToken = authHeader.slice(7);
+  if (!rawToken || rawToken.length < 16) {
     return UNAUTHORIZED();
   }
 
+  // Try mobile JWT first (contains dots = JWT format)
+  if (rawToken.includes(".")) {
+    const mobilePayload = await verifyMobileToken(rawToken);
+    if (mobilePayload) {
+      return { userId: mobilePayload.userId, authMethod: "jwt" };
+    }
+  }
+
+  // Fall through to API key
+  const rawKey = rawToken;
   const prefix = rawKey.slice(0, 8);
   const candidates = await db
     .select()

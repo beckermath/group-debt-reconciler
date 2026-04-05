@@ -15,7 +15,7 @@ struct GroupSummary: Identifiable {
     }
 }
 
-struct GroupMember: Identifiable {
+struct GroupMember: Identifiable, Hashable {
     let id: String
     let name: String
     let userId: String?
@@ -39,7 +39,7 @@ struct Transfer: Identifiable {
     let amount: Int // cents
 }
 
-struct Settlement: Identifiable {
+struct Settlement: Identifiable, Hashable {
     let id: String
     let settledAt: Date
     let settledByName: String
@@ -100,5 +100,22 @@ extension BalanceEntry {
         BalanceEntry(memberId: "m1", name: "Alice", balanceCents: 2450, maxAbsBalance: 2450),
         BalanceEntry(memberId: "m2", name: "Bob", balanceCents: -1225, maxAbsBalance: 2450),
         BalanceEntry(memberId: "m3", name: "Carol", balanceCents: -1225, maxAbsBalance: 2450),
+        BalanceEntry(memberId: "m4", name: "Dave", balanceCents: 0, maxAbsBalance: 2450),
+        BalanceEntry(memberId: "m5", name: "Eve", balanceCents: 0, maxAbsBalance: 2450),
+        BalanceEntry(memberId: "m6", name: "Frank", balanceCents: 0, maxAbsBalance: 2450),
+    ]
+}
+
+extension Settlement {
+    static let previews: [Settlement] = [
+        Settlement(id: "s1",
+                   settledAt: Calendar.current.date(byAdding: .day, value: -25, to: Date())!,
+                   settledByName: "Alice", expenseCount: 3, totalCents: 5875),
+        Settlement(id: "s2",
+                   settledAt: Calendar.current.date(byAdding: .day, value: -39, to: Date())!,
+                   settledByName: "Bob", expenseCount: 7, totalCents: 12430),
+        Settlement(id: "s3",
+                   settledAt: Calendar.current.date(byAdding: .day, value: -57, to: Date())!,
+                   settledByName: "Carol", expenseCount: 2, totalCents: 2200),
     ]
 }

@@ -39,6 +39,7 @@ export const verificationTokens = sqliteTable("verification_tokens", {
 export const groups = sqliteTable("groups", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
+  bannerUrl: text("banner_url"),
   createdBy: text("created_by")
     .notNull()
     .references(() => users.id),

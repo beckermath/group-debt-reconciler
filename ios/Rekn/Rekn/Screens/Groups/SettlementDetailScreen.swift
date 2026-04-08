@@ -20,24 +20,16 @@ struct SettlementDetailScreen: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
 
-                // Placeholder for detailed table
-                SectionCard(header: "Expenses Included") {
+                // Details card
+                SectionCard(header: "Summary") {
                     VStack(spacing: 0) {
-                        ForEach(0..<settlement.expenseCount, id: \.self) { i in
-                            HStack {
-                                Text("Expense \(i + 1)")
-                                    .font(.subheadline)
-                                Spacer()
-                                Text("$--")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .padding(.vertical, 10)
-                            .padding(.horizontal, 12)
-                            if i < settlement.expenseCount - 1 {
-                                Divider().padding(.leading)
-                            }
-                        }
+                        detailRow(label: "Date", value: settlement.settledAt.formatted(.dateTime.month(.abbreviated).day().year()))
+                        Divider().padding(.horizontal, 12)
+                        detailRow(label: "Settled by", value: settlement.settledByName)
+                        Divider().padding(.horizontal, 12)
+                        detailRow(label: "Expenses included", value: "\(settlement.expenseCount)")
+                        Divider().padding(.horizontal, 12)
+                        detailRow(label: "Total amount", value: formatCents(settlement.totalCents))
                     }
                 }
                 .padding(.horizontal)
@@ -45,6 +37,20 @@ struct SettlementDetailScreen: View {
         }
         .navigationTitle(settlement.settledAt.formatted(.dateTime.month(.abbreviated).day().year()))
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func detailRow(label: String, value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(value)
+                .font(.subheadline)
+                .fontWeight(.medium)
+        }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 12)
     }
 }
 

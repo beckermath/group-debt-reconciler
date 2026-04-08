@@ -37,6 +37,47 @@ actor APIClient {
         try mapStatusCode(response, data: data)
     }
 
+    func uploadMultipart<T: Decodable>(path: String, fileData: Data, fileName: String, mimeType: String) async throws(APIError) -> T {
+        let boundary = UUID().uuidString
+        var request = URLRequest(url: Endpoint(path: path).url)
+        request.httpMethod = "PUT"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        if let token = await KeychainService.shared.getToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        var body = Data()
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileName)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+        body.append(fileData)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        request.httpBody = body
+
+        let data: Data
+        let urlResponse: URLResponse
+        do {
+            (data, urlResponse) = try await session.data(for: request)
+        } catch let error as URLError {
+            throw .networkError(error)
+        } catch {
+            throw .networkError(URLError(.unknown))
+        }
+
+        guard let httpResponse = urlResponse as? HTTPURLResponse else {
+            throw .serverError
+        }
+        try mapStatusCode(httpResponse, data: data)
+
+        do {
+            let wrapped = try decoder.decode(DataResponse<T>.self, from: data)
+            return wrapped.data
+        } catch {
+            throw .decodingError(error)
+        }
+    }
+
     // MARK: - Internal
 
     private func execute(_ endpoint: Endpoint) async throws(APIError) -> (Data, HTTPURLResponse) {

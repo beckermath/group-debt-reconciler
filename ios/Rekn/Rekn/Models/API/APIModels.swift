@@ -8,6 +8,7 @@ struct APIGroupSummary: Decodable, Identifiable {
     let createdAt: String
     let memberCount: Int
     let memberNames: [String]
+    let memberImages: [String?]?
     let expenseCount: Int
     let lastActivityAt: String?
     let userBalanceCents: Int
@@ -25,6 +26,7 @@ struct APIGroupSummary: Decodable, Identifiable {
             name: name,
             memberCount: memberCount,
             memberNames: memberNames,
+            memberImages: memberImages ?? [],
             expenseCount: expenseCount,
             lastActivityAt: parseDate(lastActivityAt),
             userBalanceCents: userBalanceCents,
@@ -38,6 +40,7 @@ struct APIGroupSummary: Decodable, Identifiable {
 struct APIGroupDetail: Decodable {
     let id: String
     let name: String
+    let bannerUrl: String?
     let createdBy: String
     let createdAt: String
     let members: [APIMember]
@@ -53,6 +56,7 @@ struct APIMember: Decodable, Identifiable {
     let name: String
     let userId: String?
     let removedAt: String?
+    let imageUrl: String?
 
     var isRemoved: Bool { removedAt != nil }
 }

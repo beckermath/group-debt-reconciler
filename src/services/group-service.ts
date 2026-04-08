@@ -41,6 +41,13 @@ export async function renameGroup(groupId: string, newName: string) {
     .where(eq(groups.id, groupId));
 }
 
+export async function updateGroupBanner(groupId: string, bannerUrl: string | null) {
+  await db
+    .update(groups)
+    .set({ bannerUrl })
+    .where(eq(groups.id, groupId));
+}
+
 export async function deleteGroup(groupId: string) {
   const groupExpenses = await db
     .select()
@@ -80,6 +87,7 @@ export type GroupSummary = {
   createdAt: Date;
   memberCount: number;
   memberNames: string[];
+  memberImages: (string | null)[];
   expenseCount: number;
   lastActivityAt: Date | null;
   userBalanceCents: number;
@@ -96,10 +104,11 @@ export async function getUserGroupSummaries(userId: string): Promise<GroupSummar
   const summaries: GroupSummary[] = [];
 
   for (const group of userGroups) {
-    // Get active members
+    // Get active members with images
     const groupMembersList = await db
-      .select({ id: members.id, name: members.name, userId: members.userId })
+      .select({ id: members.id, name: members.name, userId: members.userId, imageUrl: users.image })
       .from(members)
+      .leftJoin(users, eq(members.userId, users.id))
       .where(and(eq(members.groupId, group.id), isNull(members.removedAt)));
 
     // Skip groups where the current user's member is removed (ghost groups)
@@ -172,6 +181,7 @@ export async function getUserGroupSummaries(userId: string): Promise<GroupSummar
       createdAt: group.createdAt,
       memberCount: groupMembersList.length,
       memberNames: groupMembersList.slice(0, 4).map((m) => m.name),
+      memberImages: groupMembersList.slice(0, 4).map((m) => m.imageUrl),
       expenseCount: currentExpenses.length,
       lastActivityAt,
       userBalanceCents,

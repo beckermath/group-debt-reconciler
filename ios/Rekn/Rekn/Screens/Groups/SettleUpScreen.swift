@@ -7,6 +7,8 @@ struct SettleUpScreen: View {
     let transfers: [Transfer]
     @State private var isSubmitting = false
     @State private var showSuccess = false
+    @State private var showConfirmation = false
+    @State private var error: String?
 
     private var totalCents: Int {
         transfers.reduce(0) { $0 + $1.amount }
@@ -52,11 +54,11 @@ struct SettleUpScreen: View {
             VStack(spacing: 8) {
                 ForEach(transfers) { transfer in
                     HStack {
-                        MemberAvatar(name: transfer.fromName, size: 28)
+                        MemberAvatar(name: transfer.fromName, imageUrl: transfer.fromImageUrl, size: 28)
                         Image(systemName: "arrow.right")
                             .font(.caption)
                             .foregroundStyle(.quaternary)
-                        MemberAvatar(name: transfer.toName, size: 28)
+                        MemberAvatar(name: transfer.toName, imageUrl: transfer.toImageUrl, size: 28)
                         VStack(alignment: .leading) {
                             Text("\(transfer.fromName) pays \(transfer.toName)")
                                 .font(.subheadline)
@@ -74,18 +76,40 @@ struct SettleUpScreen: View {
                 }
             }
 
+            if let error {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(Color.balanceNegative)
+            }
+
             // Confirm button
             Button {
-                submit()
+                showConfirmation = true
             } label: {
-                Text("Confirm settlement")
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
+                if isSubmitting {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                } else {
+                    Text("Confirm settlement")
+                        .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
+                }
             }
             .buttonStyle(.borderedProminent)
-            .tint(.pink)
             .controlSize(.large)
             .disabled(isSubmitting)
+            .confirmationDialog(
+                "Settle all debts?",
+                isPresented: $showConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Settle \(formatCents(totalCents))", role: .destructive) {
+                    submit()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This will mark all current debts as settled. This cannot be undone.")
+            }
         }
     }
 
@@ -96,13 +120,23 @@ struct SettleUpScreen: View {
             Spacer()
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 56))
-                .foregroundStyle(.green)
+                .foregroundStyle(Color.balancePositive)
             Text("All settled up!")
                 .font(.headline)
             Text("No payments needed right now.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             Spacer()
+            Button {
+                dismiss()
+            } label: {
+                Text("Done")
+                    .fontWeight(.semibold)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .padding(.horizontal)
         }
         .frame(maxWidth: .infinity, minHeight: 300)
     }
@@ -114,14 +148,15 @@ struct SettleUpScreen: View {
         Task {
             do {
                 try await groupStore.settleUp(groupId: groupId)
-                await groupStore.loadGroupDetail(id: groupId)
+                await groupStore.loadGroupDetail(id: groupId, forceReload: true)
                 withAnimation {
                     showSuccess = true
                 }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                    dismiss()
-                }
+            } catch let apiError as APIError {
+                error = apiError.errorDescription
+                isSubmitting = false
             } catch {
+                self.error = "Failed to settle up"
                 isSubmitting = false
             }
         }

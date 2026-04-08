@@ -1,21 +1,20 @@
 import SwiftUI
 
 struct MainTabView: View {
+    @State private var groupsPath = NavigationPath()
+
     var body: some View {
-        TabView {
-            Tab("Groups", systemImage: "rectangle.3.group") {
-                NavigationStack {
-                    GroupsListScreen()
-                }
-            }
-            Tab("Settings", systemImage: "gearshape") {
-                NavigationStack {
+        NavigationStack(path: $groupsPath) {
+            GroupsListScreen(path: $groupsPath)
+                .navigationDestination(for: SettingsDestination.self) { _ in
                     SettingsScreen()
                 }
-            }
         }
     }
 }
+
+/// Lightweight destination marker for navigation to Settings.
+struct SettingsDestination: Hashable {}
 
 #Preview {
     MainTabView()

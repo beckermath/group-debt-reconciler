@@ -17,7 +17,7 @@ struct BalanceBar: View {
                     Capsule()
                         .fill(Color(.systemGray5))
                     Capsule()
-                        .fill(balance > 0 ? Color.green.opacity(0.6) : Color.orange.opacity(0.5))
+                        .fill(balance > 0 ? Color.balancePositive.opacity(0.6) : Color.balanceNegative.opacity(0.5))
                         .frame(width: barWidth)
                 }
             }

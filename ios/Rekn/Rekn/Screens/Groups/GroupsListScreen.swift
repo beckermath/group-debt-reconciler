@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct GroupsListScreen: View {
+    @Binding var path: NavigationPath
     @Environment(GroupStore.self) private var groupStore
     @State private var showingCreateGroup = false
 
@@ -26,15 +27,26 @@ struct GroupsListScreen: View {
 
             case .failed(let message):
                 VStack(spacing: 12) {
-                    Text("Something went wrong")
+                    Image(systemName: "wifi.exclamationmark")
+                        .font(.system(size: 36))
+                        .foregroundStyle(.secondary.opacity(0.5))
+                    Text("Couldn't load groups")
                         .font(.headline)
                     Text(message)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    Button("Try again") {
+                        .multilineTextAlignment(.center)
+                    Button {
                         Task { await groupStore.loadGroups() }
+                    } label: {
+                        Text("Try Again")
+                            .fontWeight(.semibold)
                     }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.regular)
+                    .padding(.top, 4)
                 }
+                .padding(.horizontal, 32)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             case .loaded(let groups) where groups.isEmpty:
@@ -49,6 +61,13 @@ struct GroupsListScreen: View {
             GroupDetailScreen(groupId: groupId)
         }
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    path.append(SettingsDestination())
+                } label: {
+                    Image(systemName: "gearshape")
+                }
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     showingCreateGroup = true
@@ -58,13 +77,13 @@ struct GroupsListScreen: View {
             }
         }
         .navigationDestination(isPresented: $showingCreateGroup) {
-            GroupNameScreen()
+            GroupNameScreen(path: $path)
         }
         .task {
             await groupStore.loadGroups()
         }
         .refreshable {
-            await groupStore.loadGroups()
+            await groupStore.loadGroups(forceReload: true)
         }
     }
 
@@ -75,7 +94,7 @@ struct GroupsListScreen: View {
             VStack(spacing: 16) {
                 // Balance summary
                 if totalOwed > 0 || totalOwes > 0 {
-                    balanceSummaryRow
+                    balanceSummaryCard
                         .padding(.top, 4)
                 }
 
@@ -121,42 +140,61 @@ struct GroupsListScreen: View {
 
     // MARK: - Balance Summary Row
 
-    private var balanceSummaryRow: some View {
-        HStack(spacing: 0) {
-            if totalOwed > 0 {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("You are owed")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text("+\(formatCents(totalOwed))")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.green)
+    private var netBalance: Int { totalOwed - totalOwes }
+
+    private var balanceSummaryCard: some View {
+        VStack(spacing: 6) {
+            Text("NET BALANCE")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .tracking(0.5)
+                .foregroundStyle(.secondary)
+
+            Text(formatCents(netBalance, showSign: true))
+                .font(.system(size: 36, weight: .bold, design: .rounded))
+                .foregroundStyle(netBalance > 0 ? Color.balancePositive : netBalance < 0 ? Color.balanceNegative : .secondary)
+                .contentTransition(.numericText())
+
+            if netBalance != 0 {
+                Text(netBalance > 0 ? "owed to you" : "you owe")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("all settled up")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            // Breakdown row
+            if totalOwed > 0 || totalOwes > 0 {
+                HStack(spacing: 16) {
+                    if totalOwed > 0 {
+                        HStack(spacing: 4) {
+                            Circle().fill(Color.balancePositive).frame(width: 6, height: 6)
+                            Text("+\(formatCents(totalOwed))")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .foregroundStyle(Color.balancePositive)
+                        }
+                    }
+                    if totalOwes > 0 {
+                        HStack(spacing: 4) {
+                            Circle().fill(Color.balanceNegative).frame(width: 6, height: 6)
+                            Text("-\(formatCents(totalOwes))")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .foregroundStyle(Color.balanceNegative)
+                        }
+                    }
                 }
+                .padding(.top, 4)
             }
-
-            if totalOwed > 0 && totalOwes > 0 {
-                Text("·")
-                    .font(.caption)
-                    .foregroundStyle(.quaternary)
-                    .padding(.horizontal, 12)
-            }
-
-            if totalOwes > 0 {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("You owe")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(formatCents(totalOwes))
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.orange)
-                }
-            }
-
-            Spacer()
         }
-        .padding(.horizontal, 4)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 20)
+        .padding(.horizontal, 16)
+        .background(.background, in: .rect(cornerRadius: 14))
+        .shadow(color: .black.opacity(0.05), radius: 6, y: 3)
     }
 }
 
@@ -169,8 +207,9 @@ private struct GroupCard: View {
         HStack(spacing: 12) {
             // Avatar cluster
             HStack(spacing: -8) {
-                ForEach(group.memberNames.prefix(2), id: \.self) { name in
-                    MemberAvatar(name: name, size: 34)
+                ForEach(Array(group.memberNames.prefix(2).enumerated()), id: \.offset) { index, name in
+                    let imgUrl = index < group.memberImages.count ? group.memberImages[index] : nil
+                    MemberAvatar(name: name, imageUrl: imgUrl, size: 34)
                         .overlay(Circle().stroke(Color(.systemBackground), lineWidth: 2))
                 }
                 if group.memberCount > 2 {
@@ -189,8 +228,7 @@ private struct GroupCard: View {
             // Info
             VStack(alignment: .leading, spacing: 3) {
                 Text(group.name)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
+                    .font(.headline)
                     .lineLimit(1)
                     .foregroundStyle(.primary)
                 if let date = group.lastActivityAt {
@@ -212,7 +250,7 @@ private struct GroupCard: View {
                     Text(formatCents(group.userBalanceCents, showSign: true))
                         .font(.subheadline)
                         .fontWeight(.semibold)
-                        .foregroundStyle(group.userBalanceCents > 0 ? .green : .orange)
+                        .foregroundStyle(group.userBalanceCents > 0 ? Color.balancePositive : Color.balanceNegative)
                     Text(group.userBalanceCents > 0 ? "owed to you" : "you owe")
                         .font(.system(size: 10))
                         .foregroundStyle(.secondary)
@@ -221,7 +259,7 @@ private struct GroupCard: View {
                 Text("Settled")
                     .font(.caption)
                     .fontWeight(.medium)
-                    .foregroundStyle(.green)
+                    .foregroundStyle(Color.balancePositive)
             }
         }
         .padding(16)
@@ -241,8 +279,9 @@ struct CardPressStyle: ButtonStyle {
 }
 
 #Preview {
-    NavigationStack {
-        GroupsListScreen()
+    @Previewable @State var path = NavigationPath()
+    NavigationStack(path: $path) {
+        GroupsListScreen(path: $path)
             .environment(GroupStore())
     }
 }

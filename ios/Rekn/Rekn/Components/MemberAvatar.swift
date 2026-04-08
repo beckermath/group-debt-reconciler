@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MemberAvatar: View {
     let name: String
+    var imageUrl: String? = nil
     var size: CGFloat = 32
     var selected: Bool = false
 
@@ -29,38 +30,102 @@ struct MemberAvatar: View {
         return gradients[hash % gradients.count]
     }
 
+    private let selectionInset: CGFloat = 3
+
     var body: some View {
         let (from, to) = gradientPair
         ZStack {
-            Circle()
-                .fill(LinearGradient(colors: [from, to], startPoint: .topLeading, endPoint: .bottomTrailing))
-            Text(initials)
-                .font(.system(size: size * 0.38, weight: .semibold))
-                .foregroundStyle(.white)
-        }
-        .frame(width: size, height: size)
-        .overlay {
             if selected {
                 Circle()
                     .stroke(Color.accentColor, lineWidth: 2.5)
-                    .frame(width: size + 4, height: size + 4)
+                    .frame(width: size + selectionInset * 2, height: size + selectionInset * 2)
+            }
+
+            // Initials base layer (always rendered)
+            ZStack {
+                Circle()
+                    .fill(LinearGradient(colors: [from, to], startPoint: .topLeading, endPoint: .bottomTrailing))
+                Text(initials)
+                    .font(.system(size: size * 0.38, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+            .frame(width: size, height: size)
+
+            // Photo overlay (fades in on top when loaded)
+            if let imageUrl, !imageUrl.isEmpty, let url = URL(string: imageUrl) {
+                CachedAvatarImage(url: url, size: size)
             }
         }
+        .frame(width: size + selectionInset * 2, height: size + selectionInset * 2)
         .overlay(alignment: .bottomTrailing) {
             if selected {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: size * 0.32))
                     .foregroundStyle(.white, Color.accentColor)
-                    .offset(x: 2, y: 2)
             }
         }
+        .animation(.easeInOut(duration: 0.15), value: selected)
+    }
+}
+
+// MARK: - Cached Avatar Image
+
+/// Loads and caches avatar images in memory. Shows nothing until loaded, then fades in.
+private struct CachedAvatarImage: View {
+    let url: URL
+    let size: CGFloat
+    @State private var image: UIImage?
+
+    var body: some View {
+        ZStack {
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .clipShape(Circle())
+                    .transition(.opacity)
+            }
+        }
+        .frame(width: size, height: size)
+        .task(id: url) {
+            if let cached = AvatarCache.shared.get(url) {
+                image = cached
+                return
+            }
+            guard let (data, _) = try? await URLSession.shared.data(from: url),
+                  let uiImage = UIImage(data: data) else { return }
+            AvatarCache.shared.set(url, image: uiImage)
+            withAnimation(.easeIn(duration: 0.25)) {
+                image = uiImage
+            }
+        }
+    }
+}
+
+// MARK: - Avatar Cache
+
+/// Simple in-memory image cache for avatar URLs.
+final class AvatarCache: @unchecked Sendable {
+    static let shared = AvatarCache()
+    private let cache = NSCache<NSURL, UIImage>()
+
+    private init() {
+        cache.countLimit = 100
+    }
+
+    func get(_ url: URL) -> UIImage? {
+        cache.object(forKey: url as NSURL)
+    }
+
+    func set(_ url: URL, image: UIImage) {
+        cache.setObject(image, forKey: url as NSURL)
     }
 }
 
 #Preview {
     HStack(spacing: -8) {
         MemberAvatar(name: "Alice Johnson", size: 40)
-        MemberAvatar(name: "Bob Smith", size: 40)
+        MemberAvatar(name: "Bob Smith", imageUrl: "https://picsum.photos/80", size: 40)
         MemberAvatar(name: "Carol Davis", size: 40)
     }
 }

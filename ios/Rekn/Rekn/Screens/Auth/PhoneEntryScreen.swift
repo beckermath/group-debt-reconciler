@@ -55,7 +55,7 @@ struct PhoneEntryScreen: View {
                 if let error {
                     Text(error)
                         .font(.caption)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Color.balanceNegative)
                 }
 
                 Button {
@@ -92,6 +92,7 @@ struct PhoneEntryScreen: View {
                 Spacer()
             }
             .padding(.horizontal, 32)
+            .onTapGesture { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
             .navigationDestination(isPresented: $showingVerify) {
                 OTPVerifyScreen(phoneNumber: "+1\(phone)")
             }

@@ -5,6 +5,7 @@ struct GroupSummary: Identifiable {
     let name: String
     let memberCount: Int
     let memberNames: [String]
+    let memberImages: [String?]
     let expenseCount: Int
     let lastActivityAt: Date?
     let userBalanceCents: Int
@@ -20,14 +21,16 @@ struct GroupMember: Identifiable, Hashable {
     let name: String
     let userId: String?
     let isRemoved: Bool
+    let imageUrl: String?
 }
 
-struct Expense: Identifiable {
+struct Expense: Identifiable, Hashable {
     let id: String
     let description: String
     let amount: Int // cents
     let paidByName: String
     let paidByMemberId: String
+    let paidByImageUrl: String?
     let splitCount: Int
     let createdAt: Date
 }
@@ -35,7 +38,9 @@ struct Expense: Identifiable {
 struct Transfer: Identifiable {
     var id: String { "\(fromName)-\(toName)" }
     let fromName: String
+    let fromImageUrl: String?
     let toName: String
+    let toImageUrl: String?
     let amount: Int // cents
 }
 
@@ -51,6 +56,7 @@ struct BalanceEntry: Identifiable {
     var id: String { memberId }
     let memberId: String
     let name: String
+    let imageUrl: String?
     let balanceCents: Int
     let maxAbsBalance: Int
 }
@@ -61,19 +67,19 @@ extension GroupSummary {
     static let previews: [GroupSummary] = [
         GroupSummary(
             id: "1", name: "Ski Trip", memberCount: 3,
-            memberNames: ["Alice", "Bob", "Carol"],
+            memberNames: ["Alice", "Bob", "Carol"], memberImages: [nil, nil, nil],
             expenseCount: 4, lastActivityAt: Date(),
             userBalanceCents: 2450, status: .hasBalances
         ),
         GroupSummary(
             id: "2", name: "Apartment", memberCount: 2,
-            memberNames: ["Alice", "Dave"],
+            memberNames: ["Alice", "Dave"], memberImages: [nil, nil],
             expenseCount: 12, lastActivityAt: Calendar.current.date(byAdding: .day, value: -3, to: Date()),
             userBalanceCents: -1200, status: .hasBalances
         ),
         GroupSummary(
             id: "3", name: "Dinner Club", memberCount: 4,
-            memberNames: ["Alice", "Bob", "Carol", "Eve"],
+            memberNames: ["Alice", "Bob", "Carol", "Eve"], memberImages: [nil, nil, nil, nil],
             expenseCount: 8, lastActivityAt: Calendar.current.date(byAdding: .day, value: -7, to: Date()),
             userBalanceCents: 0, status: .settled
         ),
@@ -82,27 +88,27 @@ extension GroupSummary {
 
 extension Expense {
     static let previews: [Expense] = [
-        Expense(id: "e1", description: "Dinner at Luigi's", amount: 3675, paidByName: "Alice", paidByMemberId: "m1", splitCount: 3, createdAt: Date()),
-        Expense(id: "e2", description: "Uber to airport", amount: 2200, paidByName: "Bob", paidByMemberId: "m2", splitCount: 2, createdAt: Calendar.current.date(byAdding: .hour, value: -5, to: Date())!),
-        Expense(id: "e3", description: "Groceries", amount: 8450, paidByName: "Alice", paidByMemberId: "m1", splitCount: 3, createdAt: Calendar.current.date(byAdding: .day, value: -1, to: Date())!),
+        Expense(id: "e1", description: "Dinner at Luigi's", amount: 3675, paidByName: "Alice", paidByMemberId: "m1", paidByImageUrl: nil, splitCount: 3, createdAt: Date()),
+        Expense(id: "e2", description: "Uber to airport", amount: 2200, paidByName: "Bob", paidByMemberId: "m2", paidByImageUrl: nil, splitCount: 2, createdAt: Calendar.current.date(byAdding: .hour, value: -5, to: Date())!),
+        Expense(id: "e3", description: "Groceries", amount: 8450, paidByName: "Alice", paidByMemberId: "m1", paidByImageUrl: nil, splitCount: 3, createdAt: Calendar.current.date(byAdding: .day, value: -1, to: Date())!),
     ]
 }
 
 extension Transfer {
     static let previews: [Transfer] = [
-        Transfer(fromName: "Bob", toName: "Alice", amount: 1225),
-        Transfer(fromName: "Carol", toName: "Alice", amount: 1225),
+        Transfer(fromName: "Bob", fromImageUrl: nil, toName: "Alice", toImageUrl: nil, amount: 1225),
+        Transfer(fromName: "Carol", fromImageUrl: nil, toName: "Alice", toImageUrl: nil, amount: 1225),
     ]
 }
 
 extension BalanceEntry {
     static let previews: [BalanceEntry] = [
-        BalanceEntry(memberId: "m1", name: "Alice", balanceCents: 2450, maxAbsBalance: 2450),
-        BalanceEntry(memberId: "m2", name: "Bob", balanceCents: -1225, maxAbsBalance: 2450),
-        BalanceEntry(memberId: "m3", name: "Carol", balanceCents: -1225, maxAbsBalance: 2450),
-        BalanceEntry(memberId: "m4", name: "Dave", balanceCents: 0, maxAbsBalance: 2450),
-        BalanceEntry(memberId: "m5", name: "Eve", balanceCents: 0, maxAbsBalance: 2450),
-        BalanceEntry(memberId: "m6", name: "Frank", balanceCents: 0, maxAbsBalance: 2450),
+        BalanceEntry(memberId: "m1", name: "Alice", imageUrl: nil, balanceCents: 2450, maxAbsBalance: 2450),
+        BalanceEntry(memberId: "m2", name: "Bob", imageUrl: nil, balanceCents: -1225, maxAbsBalance: 2450),
+        BalanceEntry(memberId: "m3", name: "Carol", imageUrl: nil, balanceCents: -1225, maxAbsBalance: 2450),
+        BalanceEntry(memberId: "m4", name: "Dave", imageUrl: nil, balanceCents: 0, maxAbsBalance: 2450),
+        BalanceEntry(memberId: "m5", name: "Eve", imageUrl: nil, balanceCents: 0, maxAbsBalance: 2450),
+        BalanceEntry(memberId: "m6", name: "Frank", imageUrl: nil, balanceCents: 0, maxAbsBalance: 2450),
     ]
 }
 

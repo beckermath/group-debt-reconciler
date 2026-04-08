@@ -3,6 +3,7 @@ import SwiftUI
 struct MemberPickerScreen: View {
     let groupName: String
     let groupId: String
+    var onComplete: (() -> Void)?
     @Environment(\.dismiss) private var dismiss
     @Environment(GroupStore.self) private var groupStore
     @State private var searchQuery = ""
@@ -31,7 +32,7 @@ struct MemberPickerScreen: View {
             if let error {
                 Text(error)
                     .font(.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Color.balanceNegative)
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
             }
@@ -97,6 +98,7 @@ struct MemberPickerScreen: View {
                 .foregroundStyle(.secondary)
             TextField("Type a name to add as guest...", text: $searchQuery)
                 .font(.body)
+                .submitLabel(.done)
                 .onSubmit {
                     addGuestFromSearch()
                 }
@@ -119,7 +121,7 @@ struct MemberPickerScreen: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(addedMembers) { member in
-                    MemberChip(member: member) {
+                    PickedMemberChip(member: member) {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                             addedMembers.removeAll { $0.id == member.id }
                         }
@@ -218,14 +220,18 @@ struct MemberPickerScreen: View {
         }
 
         // Refresh groups list and navigate back
-        await groupStore.loadGroups()
-        dismiss()
+        await groupStore.loadGroups(forceReload: true)
+        if let onComplete {
+            onComplete()
+        } else {
+            dismiss()
+        }
     }
 }
 
 // MARK: - Member Chip
 
-private struct MemberChip: View {
+private struct PickedMemberChip: View {
     let member: PickedMember
     let onRemove: () -> Void
 

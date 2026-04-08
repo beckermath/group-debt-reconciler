@@ -12,11 +12,14 @@
 		0C5D2E0187DCD7336F4B8208 /* SectionCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7AA6C157FFD8C54F3DD504F /* SectionCard.swift */; };
 		11F8CD469D84ECB1F0BE8B4C /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E2294847314AD00F6C1A794 /* MainTabView.swift */; };
 		1E0F4FD045E19689B0FFCDE2 /* AddExpenseScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FB25EBD3BB613AB5BA27135 /* AddExpenseScreen.swift */; };
+		1F7733C6400644B9A326BEFE /* SplitConfigStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DF77F1E000F4BD5871C75C0 /* SplitConfigStep.swift */; };
 		2E7BDDFF9BAF08C52FB09DF2 /* APIConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BB790B696CA71D5136E9F98 /* APIConfiguration.swift */; };
+		36C76589026741778773A3A0 /* SplitModeScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42B14C0737EB45AD9C45AEAC /* SplitModeScreen.swift */; };
 		37915BDFA4DD57C5818E6006 /* AuthEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B8A83344D05376026C8052A /* AuthEndpoint.swift */; };
 		3C489EFA99DE54FAC73E6861 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 165CD276EE42B973B3ED9FD3 /* Assets.xcassets */; };
 		3E78B2D920F20163824C591E /* ReknTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4D294F3197F94BFB38912F /* ReknTests.swift */; };
 		473B87E270C1EBB27239F80C /* SettleUpScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 356D8A76009E31609521B813 /* SettleUpScreen.swift */; };
+		49024A9ED5104332AD9D536D /* PayerSelectionScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEE719C0E0124B028BE5E224 /* PayerSelectionScreen.swift */; };
 		4C631954CE28177012B6ED1B /* APIModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E8CF511A56D2292A717F5F2 /* APIModels.swift */; };
 		58D6CFBDC7F073B90ADB6A92 /* NameSetupScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E1BCD6006CD47458DB2AFC4 /* NameSetupScreen.swift */; };
 		5B0537AB9A0C1FC44208670A /* SettlementDetailScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F14B3A1C1F4343CC25DEA84B /* SettlementDetailScreen.swift */; };
@@ -26,21 +29,29 @@
 		6FE8858A643955BCC71E7EF5 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3480270B90B2B05DA1773214 /* KeychainService.swift */; };
 		71CD7B675906DCD306577983 /* PhoneEntryScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 137B3AD004CD14B885D6B870 /* PhoneEntryScreen.swift */; };
 		76E59E5974D31CE9A0292D4A /* SettlementsEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83799FA0E2F674013E85F25E /* SettlementsEndpoint.swift */; };
+		7E0DA59466794197A70EBBE9 /* ExpenseDetailsStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = E44B462CF400471EB997F2E5 /* ExpenseDetailsStep.swift */; };
 		8D3DA3116D424815A2C98085 /* MemberAvatar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 323897F7B1E6BF6AA8DF1320 /* MemberAvatar.swift */; };
 		9E3325C90E8E68836497FAB4 /* GroupsListScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF159A0829AB1E24FA1CF145 /* GroupsListScreen.swift */; };
 		A2C7FBE192841CC5308ECE3E /* ReknApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B97032A75D7830FE4195A3D /* ReknApp.swift */; };
+		AAB5DA17EE2F455DBE4D046E /* ReviewExpenseStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67845BA2633A433B97823484 /* ReviewExpenseStep.swift */; };
 		AFF1924E157906DBBCEAA39E /* BalanceBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F6B6B69A56D97A4892F9BE6 /* BalanceBar.swift */; };
 		B1C8452FBDDBDCF97429F57B /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5D3520E30D0FAE73AE216CA /* APIClient.swift */; };
 		B21522063EF6E318E9ACA30E /* GroupsEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE9D2A4B24A695ADA0E5AA2A /* GroupsEndpoint.swift */; };
 		B2F906E77003E466ABD3F2E5 /* GroupNameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B81B7F5F8FF42DFEFD33E4A3 /* GroupNameScreen.swift */; };
+		C339A2E123F64EE294F28A0E /* SplitMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 195251EA988D48E1A9416F07 /* SplitMode.swift */; };
 		C566F0729259CA9AF3B1F54A /* Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1277C7E25684AB4F7F0EFC6C /* Helpers.swift */; };
+		C7E8619B30AE40AEA0A2357D /* AddExpenseModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19A61ADA4B2B4537BE7CC96A /* AddExpenseModel.swift */; };
 		CA16739B37885481709B16CD /* Group.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399BE6DC2C97920BFD87768 /* Group.swift */; };
 		CBF0197E85FDF3A9A23BF3CD /* MembersEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = D572E146AF1DC5F5E0AB752B /* MembersEndpoint.swift */; };
 		D08E9E06A7F2BC9A2DA71E4B /* GroupDetailScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBF0F9E39662C552CB14AF8B /* GroupDetailScreen.swift */; };
+		D0B00EFFDF1D43018AA3A8AB /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1136F79CB2FE4360B6972DE8 /* Theme.swift */; };
+		D7AD7FC3B5844D158BEB1CF9 /* ReknTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = B784D7D3E4954EE28D99649A /* ReknTextField.swift */; };
 		DADD8C2F8DAE5A053B804A83 /* ReknUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B8D1E6BCCC4B6CB7F4294C7 /* ReknUITests.swift */; };
 		E411DFA64507ED9A9BD38ED1 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C0D37DAD57E43170714D3F /* AuthManager.swift */; };
+		E92CFF36AD704585860F1854 /* ExpenseDetailScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DF4011A035C4A31B474D31B /* ExpenseDetailScreen.swift */; };
 		F724039B565BD143D394ADAB /* APIError.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2BAD04536C0C454C0CFD085 /* APIError.swift */; };
 		F7747832AF193BAE8B7360DE /* GroupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F56BC4458F2D1066E7AA867 /* GroupStore.swift */; };
+		C6C192FCBAD548E99D37C8BD /* EditGroupScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35F90CA717584A3B899B7D38 /* EditGroupScreen.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -62,22 +73,29 @@
 
 /* Begin PBXFileReference section */
 		0C4D294F3197F94BFB38912F /* ReknTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReknTests.swift; sourceTree = "<group>"; };
+		0DF4011A035C4A31B474D31B /* ExpenseDetailScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseDetailScreen.swift; sourceTree = "<group>"; };
 		0F6B6B69A56D97A4892F9BE6 /* BalanceBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BalanceBar.swift; sourceTree = "<group>"; };
+		1136F79CB2FE4360B6972DE8 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		1277C7E25684AB4F7F0EFC6C /* Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Helpers.swift; sourceTree = "<group>"; };
 		137B3AD004CD14B885D6B870 /* PhoneEntryScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneEntryScreen.swift; sourceTree = "<group>"; };
 		165CD276EE42B973B3ED9FD3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		195251EA988D48E1A9416F07 /* SplitMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplitMode.swift; sourceTree = "<group>"; };
+		19A61ADA4B2B4537BE7CC96A /* AddExpenseModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddExpenseModel.swift; sourceTree = "<group>"; };
 		2A9B574860D504DA522A27DA /* OTPVerifyScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OTPVerifyScreen.swift; sourceTree = "<group>"; };
 		2B97032A75D7830FE4195A3D /* ReknApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReknApp.swift; sourceTree = "<group>"; };
 		323897F7B1E6BF6AA8DF1320 /* MemberAvatar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemberAvatar.swift; sourceTree = "<group>"; };
 		3480270B90B2B05DA1773214 /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
 		356D8A76009E31609521B813 /* SettleUpScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettleUpScreen.swift; sourceTree = "<group>"; };
+		3DF77F1E000F4BD5871C75C0 /* SplitConfigStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplitConfigStep.swift; sourceTree = "<group>"; };
 		3F56BC4458F2D1066E7AA867 /* GroupStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupStore.swift; sourceTree = "<group>"; };
+		42B14C0737EB45AD9C45AEAC /* SplitModeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplitModeScreen.swift; sourceTree = "<group>"; };
 		49F089323C72D361E5728E92 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		4BB790B696CA71D5136E9F98 /* APIConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIConfiguration.swift; sourceTree = "<group>"; };
 		4E2294847314AD00F6C1A794 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		4E8CF511A56D2292A717F5F2 /* APIModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIModels.swift; sourceTree = "<group>"; };
 		5B8A83344D05376026C8052A /* AuthEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthEndpoint.swift; sourceTree = "<group>"; };
 		5E1BCD6006CD47458DB2AFC4 /* NameSetupScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NameSetupScreen.swift; sourceTree = "<group>"; };
+		67845BA2633A433B97823484 /* ReviewExpenseStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewExpenseStep.swift; sourceTree = "<group>"; };
 		727B1AE8F21D0386D3FF1FE4 /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreen.swift; sourceTree = "<group>"; };
 		7399BE6DC2C97920BFD87768 /* Group.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Group.swift; sourceTree = "<group>"; };
 		73C0D37DAD57E43170714D3F /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
@@ -88,6 +106,7 @@
 		83799FA0E2F674013E85F25E /* SettlementsEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettlementsEndpoint.swift; sourceTree = "<group>"; };
 		8DF84AF30C4EC5524A3B2366 /* APIResponse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIResponse.swift; sourceTree = "<group>"; };
 		9B8D1E6BCCC4B6CB7F4294C7 /* ReknUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReknUITests.swift; sourceTree = "<group>"; };
+		B784D7D3E4954EE28D99649A /* ReknTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReknTextField.swift; sourceTree = "<group>"; };
 		B81B7F5F8FF42DFEFD33E4A3 /* GroupNameScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupNameScreen.swift; sourceTree = "<group>"; };
 		C7AA6C157FFD8C54F3DD504F /* SectionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionCard.swift; sourceTree = "<group>"; };
 		CBF0F9E39662C552CB14AF8B /* GroupDetailScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupDetailScreen.swift; sourceTree = "<group>"; };
@@ -95,10 +114,13 @@
 		D2BAD04536C0C454C0CFD085 /* APIError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIError.swift; sourceTree = "<group>"; };
 		D572E146AF1DC5F5E0AB752B /* MembersEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MembersEndpoint.swift; sourceTree = "<group>"; };
 		DE9D2A4B24A695ADA0E5AA2A /* GroupsEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupsEndpoint.swift; sourceTree = "<group>"; };
+		E44B462CF400471EB997F2E5 /* ExpenseDetailsStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseDetailsStep.swift; sourceTree = "<group>"; };
 		E5D3520E30D0FAE73AE216CA /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
-		E8DD70A00AF03E72E27509D9 /* Rekn.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Rekn.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E8DD70A00AF03E72E27509D9 /* Rekn.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Rekn.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E931A3855F6AB42BC2015C21 /* ReknUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = ReknUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		EEE719C0E0124B028BE5E224 /* PayerSelectionScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayerSelectionScreen.swift; sourceTree = "<group>"; };
 		F14B3A1C1F4343CC25DEA84B /* SettlementDetailScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettlementDetailScreen.swift; sourceTree = "<group>"; };
+		35F90CA717584A3B899B7D38 /* EditGroupScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditGroupScreen.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -134,6 +156,14 @@
 				7FB25EBD3BB613AB5BA27135 /* AddExpenseScreen.swift */,
 				CBF0F9E39662C552CB14AF8B /* GroupDetailScreen.swift */,
 				B81B7F5F8FF42DFEFD33E4A3 /* GroupNameScreen.swift */,
+				35F90CA717584A3B899B7D38 /* EditGroupScreen.swift */,
+				19A61ADA4B2B4537BE7CC96A /* AddExpenseModel.swift */,
+				0DF4011A035C4A31B474D31B /* ExpenseDetailScreen.swift */,
+				E44B462CF400471EB997F2E5 /* ExpenseDetailsStep.swift */,
+				EEE719C0E0124B028BE5E224 /* PayerSelectionScreen.swift */,
+				67845BA2633A433B97823484 /* ReviewExpenseStep.swift */,
+				3DF77F1E000F4BD5871C75C0 /* SplitConfigStep.swift */,
+				42B14C0737EB45AD9C45AEAC /* SplitModeScreen.swift */,
 				CF159A0829AB1E24FA1CF145 /* GroupsListScreen.swift */,
 				80EA6ECB5A62C056572091C0 /* MemberPickerScreen.swift */,
 				F14B3A1C1F4343CC25DEA84B /* SettlementDetailScreen.swift */,
@@ -215,6 +245,8 @@
 				1277C7E25684AB4F7F0EFC6C /* Helpers.swift */,
 				323897F7B1E6BF6AA8DF1320 /* MemberAvatar.swift */,
 				C7AA6C157FFD8C54F3DD504F /* SectionCard.swift */,
+				B784D7D3E4954EE28D99649A /* ReknTextField.swift */,
+				1136F79CB2FE4360B6972DE8 /* Theme.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -239,6 +271,7 @@
 			isa = PBXGroup;
 			children = (
 				7399BE6DC2C97920BFD87768 /* Group.swift */,
+				195251EA988D48E1A9416F07 /* SplitMode.swift */,
 				672F2ED9B528FA05406C2F88 /* API */,
 			);
 			path = Models;
@@ -336,7 +369,6 @@
 						TestTargetID = 938247ACE40C2122044376A9;
 					};
 					938247ACE40C2122044376A9 = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -392,6 +424,17 @@
 				D08E9E06A7F2BC9A2DA71E4B /* GroupDetailScreen.swift in Sources */,
 				B2F906E77003E466ABD3F2E5 /* GroupNameScreen.swift in Sources */,
 				F7747832AF193BAE8B7360DE /* GroupStore.swift in Sources */,
+				C6C192FCBAD548E99D37C8BD /* EditGroupScreen.swift in Sources */,
+				D0B00EFFDF1D43018AA3A8AB /* Theme.swift in Sources */,
+				D7AD7FC3B5844D158BEB1CF9 /* ReknTextField.swift in Sources */,
+				C339A2E123F64EE294F28A0E /* SplitMode.swift in Sources */,
+				E92CFF36AD704585860F1854 /* ExpenseDetailScreen.swift in Sources */,
+				C7E8619B30AE40AEA0A2357D /* AddExpenseModel.swift in Sources */,
+				7E0DA59466794197A70EBBE9 /* ExpenseDetailsStep.swift in Sources */,
+				1F7733C6400644B9A326BEFE /* SplitConfigStep.swift in Sources */,
+				49024A9ED5104332AD9D536D /* PayerSelectionScreen.swift in Sources */,
+				36C76589026741778773A3A0 /* SplitModeScreen.swift in Sources */,
+				AAB5DA17EE2F455DBE4D046E /* ReviewExpenseStep.swift in Sources */,
 				B21522063EF6E318E9ACA30E /* GroupsEndpoint.swift in Sources */,
 				9E3325C90E8E68836497FAB4 /* GroupsListScreen.swift in Sources */,
 				C566F0729259CA9AF3B1F54A /* Helpers.swift in Sources */,
@@ -562,7 +605,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = WSHTD5Z42B;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Rekn/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -570,7 +613,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.beckermathie.rekn;
+				PRODUCT_BUNDLE_IDENTIFIER = com.beckermathie.rekn.app;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -656,7 +699,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = WSHTD5Z42B;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Rekn/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -664,7 +707,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.beckermathie.rekn;
+				PRODUCT_BUNDLE_IDENTIFIER = com.beckermathie.rekn.app;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 1;

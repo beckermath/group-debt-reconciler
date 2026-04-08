@@ -12,18 +12,31 @@ final class AuthManager: @unchecked Sendable {
         let name: String?
         let phoneNumber: String?
         let isGuest: Bool
+        let imageUrl: String?
     }
 
     func checkExistingSession() async {
-        guard let token = await KeychainService.shared.getToken() else {
+        guard let _ = await KeychainService.shared.getToken() else {
             isAuthenticated = false
             return
         }
 
-        // TODO: validate token expiry locally or call a /me endpoint
-        // For now, trust the token exists
-        isAuthenticated = true
-        _ = token
+        do {
+            let user: MeResponse = try await APIClient.shared.request(
+                Endpoint(path: "user")
+            )
+            currentUser = AuthUser(
+                id: user.id,
+                name: user.name,
+                phoneNumber: user.phoneNumber,
+                isGuest: false,
+                imageUrl: user.image
+            )
+            isAuthenticated = true
+        } catch {
+            await KeychainService.shared.deleteToken()
+            isAuthenticated = false
+        }
     }
 
     // MARK: - Send OTP
@@ -47,14 +60,14 @@ final class AuthManager: @unchecked Sendable {
             return .newUser(phoneNumber: result.phoneNumber ?? phoneNumber)
         }
 
-        // Existing user — save token
         if let token = result.token, let user = result.user {
             await KeychainService.shared.saveToken(token)
             currentUser = AuthUser(
                 id: user.id,
                 name: user.name,
                 phoneNumber: user.phoneNumber,
-                isGuest: user.isGuest
+                isGuest: user.isGuest,
+                imageUrl: nil
             )
             isGuest = user.isGuest
             isAuthenticated = true
@@ -77,7 +90,8 @@ final class AuthManager: @unchecked Sendable {
             id: result.user.id,
             name: result.user.name,
             phoneNumber: result.user.phoneNumber,
-            isGuest: result.user.isGuest
+            isGuest: result.user.isGuest,
+            imageUrl: nil
         )
         isGuest = false
         isAuthenticated = true
@@ -95,10 +109,24 @@ final class AuthManager: @unchecked Sendable {
             id: result.user.id,
             name: result.user.name,
             phoneNumber: nil,
-            isGuest: true
+            isGuest: true,
+            imageUrl: nil
         )
         isGuest = true
         isAuthenticated = true
+    }
+
+    // MARK: - Update Image
+
+    func updateImageUrl(_ url: String?) {
+        guard let user = currentUser else { return }
+        currentUser = AuthUser(
+            id: user.id,
+            name: user.name,
+            phoneNumber: user.phoneNumber,
+            isGuest: user.isGuest,
+            imageUrl: url
+        )
     }
 
     // MARK: - Sign Out
@@ -142,4 +170,11 @@ private struct UserResponse: Decodable {
     let name: String?
     let phoneNumber: String?
     let isGuest: Bool
+}
+
+private struct MeResponse: Decodable {
+    let id: String
+    let name: String?
+    let phoneNumber: String?
+    let image: String?
 }

@@ -20,20 +20,23 @@ struct NameSetupScreen: View {
                     .foregroundStyle(.secondary)
             }
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Your name")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                TextField("Alex", text: $name)
-                    .textFieldStyle(.roundedBorder)
-                    .textContentType(.name)
-                    .autocorrectionDisabled()
-            }
+            ReknTextField(
+                label: "Your name",
+                placeholder: "Alex",
+                text: $name,
+                textContentType: .name,
+                submitLabel: .done,
+                onSubmit: {
+                    guard !name.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+                    Task { await completeSetup() }
+                }
+            )
+            .autocorrectionDisabled()
 
             if let error {
                 Text(error)
                     .font(.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Color.balanceNegative)
             }
 
             Button {
@@ -55,6 +58,7 @@ struct NameSetupScreen: View {
             Spacer()
         }
         .padding(.horizontal, 32)
+        .onTapGesture { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
         .navigationBarBackButtonHidden()
     }
 

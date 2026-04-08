@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct GroupNameScreen: View {
+    @Binding var path: NavigationPath
     @Environment(GroupStore.self) private var groupStore
     @State private var groupName = ""
     @State private var isCreating = false
@@ -34,6 +35,11 @@ struct GroupNameScreen: View {
                     .font(.body)
                     .multilineTextAlignment(.center)
                     .focused($nameFieldFocused)
+                    .submitLabel(.done)
+                    .onSubmit {
+                        guard !groupName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+                        Task { await createGroup() }
+                    }
                     .padding(.vertical, 12)
 
                 Rectangle()
@@ -47,7 +53,7 @@ struct GroupNameScreen: View {
             if let error {
                 Text(error)
                     .font(.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Color.balanceNegative)
                     .padding(.top, 8)
             }
 
@@ -73,10 +79,17 @@ struct GroupNameScreen: View {
             .padding(.horizontal, 16)
             .padding(.bottom, 16)
         }
+        .onTapGesture { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
         .navigationTitle("New Group")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: $showingAddMembers) {
-            MemberPickerScreen(groupName: groupName, groupId: createdGroupId ?? "")
+            MemberPickerScreen(groupName: groupName, groupId: createdGroupId ?? "") {
+                // Pop entire creation stack and navigate to the new group
+                path = NavigationPath()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    path.append(createdGroupId ?? "")
+                }
+            }
         }
         .onAppear { nameFieldFocused = true }
     }
@@ -99,8 +112,9 @@ struct GroupNameScreen: View {
 }
 
 #Preview {
-    NavigationStack {
-        GroupNameScreen()
+    @Previewable @State var path = NavigationPath()
+    NavigationStack(path: $path) {
+        GroupNameScreen(path: $path)
             .environment(GroupStore())
     }
 }

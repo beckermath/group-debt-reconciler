@@ -9,6 +9,7 @@ struct OTPVerifyScreen: View {
     @State private var resendTimer = 60
     @State private var showingSetup = false
     @State private var verifiedPhone = ""
+    @FocusState private var codeFocused: Bool
 
     private var maskedPhone: String {
         guard phoneNumber.count > 4 else { return phoneNumber }
@@ -33,6 +34,8 @@ struct OTPVerifyScreen: View {
             // Code input
             TextField("000000", text: $code)
                 .keyboardType(.numberPad)
+                .textContentType(.oneTimeCode)
+                .focused($codeFocused)
                 .multilineTextAlignment(.center)
                 .font(.system(size: 32, weight: .semibold, design: .monospaced))
                 .tracking(12)
@@ -40,12 +43,16 @@ struct OTPVerifyScreen: View {
                 .background(Color(.systemGray6), in: .rect(cornerRadius: 12))
                 .onChange(of: code) { _, newValue in
                     code = String(newValue.filter(\.isNumber).prefix(6))
+                    if code.count == 6 {
+                        codeFocused = false
+                        Task { await verify() }
+                    }
                 }
 
             if let error {
                 Text(error)
                     .font(.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Color.balanceNegative)
             }
 
             Button {
@@ -78,9 +85,11 @@ struct OTPVerifyScreen: View {
             Spacer()
         }
         .padding(.horizontal, 32)
+        .onTapGesture { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
         .navigationDestination(isPresented: $showingSetup) {
             NameSetupScreen(phoneNumber: verifiedPhone)
         }
+        .onAppear { codeFocused = true }
         .task {
             while resendTimer > 0 {
                 try? await Task.sleep(for: .seconds(1))

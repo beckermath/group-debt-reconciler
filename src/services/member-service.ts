@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { members, memberIdentities, expenses, expenseSplits, groupMembers } from "@/db/schema";
+import { members, memberIdentities, expenses, expenseSplits, groupMembers, users } from "@/db/schema";
 import { eq, and, inArray, isNull, or } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { linkIdentity, type ExternalIdentity } from "./identity-service";
@@ -148,5 +148,17 @@ export async function validateMembersInGroup(memberIds: string[], groupId: strin
 }
 
 export async function getGroupMembers(groupId: string) {
-  return db.select().from(members).where(eq(members.groupId, groupId));
+  const rows = await db
+    .select({
+      id: members.id,
+      groupId: members.groupId,
+      name: members.name,
+      userId: members.userId,
+      removedAt: members.removedAt,
+      imageUrl: users.image,
+    })
+    .from(members)
+    .leftJoin(users, eq(members.userId, users.id))
+    .where(eq(members.groupId, groupId));
+  return rows;
 }

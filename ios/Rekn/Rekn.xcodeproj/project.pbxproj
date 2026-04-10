@@ -17,6 +17,7 @@
 		36C76589026741778773A3A0 /* SplitModeScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42B14C0737EB45AD9C45AEAC /* SplitModeScreen.swift */; };
 		37915BDFA4DD57C5818E6006 /* AuthEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B8A83344D05376026C8052A /* AuthEndpoint.swift */; };
 		3C489EFA99DE54FAC73E6861 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 165CD276EE42B973B3ED9FD3 /* Assets.xcassets */; };
+		3CA797372F87ECFB00A3BEB7 /* GroupDetailPreviews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CA797362F87ECFB00A3BEB7 /* GroupDetailPreviews.swift */; };
 		3E78B2D920F20163824C591E /* ReknTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4D294F3197F94BFB38912F /* ReknTests.swift */; };
 		473B87E270C1EBB27239F80C /* SettleUpScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 356D8A76009E31609521B813 /* SettleUpScreen.swift */; };
 		49024A9ED5104332AD9D536D /* PayerSelectionScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEE719C0E0124B028BE5E224 /* PayerSelectionScreen.swift */; };
@@ -40,6 +41,7 @@
 		B2F906E77003E466ABD3F2E5 /* GroupNameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B81B7F5F8FF42DFEFD33E4A3 /* GroupNameScreen.swift */; };
 		C339A2E123F64EE294F28A0E /* SplitMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 195251EA988D48E1A9416F07 /* SplitMode.swift */; };
 		C566F0729259CA9AF3B1F54A /* Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1277C7E25684AB4F7F0EFC6C /* Helpers.swift */; };
+		C6C192FCBAD548E99D37C8BD /* EditGroupScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35F90CA717584A3B899B7D38 /* EditGroupScreen.swift */; };
 		C7E8619B30AE40AEA0A2357D /* AddExpenseModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19A61ADA4B2B4537BE7CC96A /* AddExpenseModel.swift */; };
 		CA16739B37885481709B16CD /* Group.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399BE6DC2C97920BFD87768 /* Group.swift */; };
 		CBF0197E85FDF3A9A23BF3CD /* MembersEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = D572E146AF1DC5F5E0AB752B /* MembersEndpoint.swift */; };
@@ -51,7 +53,6 @@
 		E92CFF36AD704585860F1854 /* ExpenseDetailScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DF4011A035C4A31B474D31B /* ExpenseDetailScreen.swift */; };
 		F724039B565BD143D394ADAB /* APIError.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2BAD04536C0C454C0CFD085 /* APIError.swift */; };
 		F7747832AF193BAE8B7360DE /* GroupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F56BC4458F2D1066E7AA867 /* GroupStore.swift */; };
-		C6C192FCBAD548E99D37C8BD /* EditGroupScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35F90CA717584A3B899B7D38 /* EditGroupScreen.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -86,6 +87,8 @@
 		323897F7B1E6BF6AA8DF1320 /* MemberAvatar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemberAvatar.swift; sourceTree = "<group>"; };
 		3480270B90B2B05DA1773214 /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
 		356D8A76009E31609521B813 /* SettleUpScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettleUpScreen.swift; sourceTree = "<group>"; };
+		35F90CA717584A3B899B7D38 /* EditGroupScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditGroupScreen.swift; sourceTree = "<group>"; };
+		3CA797362F87ECFB00A3BEB7 /* GroupDetailPreviews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupDetailPreviews.swift; sourceTree = "<group>"; };
 		3DF77F1E000F4BD5871C75C0 /* SplitConfigStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplitConfigStep.swift; sourceTree = "<group>"; };
 		3F56BC4458F2D1066E7AA867 /* GroupStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupStore.swift; sourceTree = "<group>"; };
 		42B14C0737EB45AD9C45AEAC /* SplitModeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplitModeScreen.swift; sourceTree = "<group>"; };
@@ -120,7 +123,6 @@
 		E931A3855F6AB42BC2015C21 /* ReknUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = ReknUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		EEE719C0E0124B028BE5E224 /* PayerSelectionScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayerSelectionScreen.swift; sourceTree = "<group>"; };
 		F14B3A1C1F4343CC25DEA84B /* SettlementDetailScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettlementDetailScreen.swift; sourceTree = "<group>"; };
-		35F90CA717584A3B899B7D38 /* EditGroupScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditGroupScreen.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -153,6 +155,7 @@
 		2522E2639B33742C2125A4AE /* Groups */ = {
 			isa = PBXGroup;
 			children = (
+				3CA797362F87ECFB00A3BEB7 /* GroupDetailPreviews.swift */,
 				7FB25EBD3BB613AB5BA27135 /* AddExpenseScreen.swift */,
 				CBF0F9E39662C552CB14AF8B /* GroupDetailScreen.swift */,
 				B81B7F5F8FF42DFEFD33E4A3 /* GroupNameScreen.swift */,
@@ -450,6 +453,7 @@
 				0C5D2E0187DCD7336F4B8208 /* SectionCard.swift in Sources */,
 				06607B05FC5E776C444B15C5 /* SettingsScreen.swift in Sources */,
 				473B87E270C1EBB27239F80C /* SettleUpScreen.swift in Sources */,
+				3CA797372F87ECFB00A3BEB7 /* GroupDetailPreviews.swift in Sources */,
 				5B0537AB9A0C1FC44208670A /* SettlementDetailScreen.swift in Sources */,
 				76E59E5974D31CE9A0292D4A /* SettlementsEndpoint.swift in Sources */,
 			);

@@ -9,15 +9,22 @@ struct GroupDetailScreen: View {
     @State private var showingSettleUp = false
     @State private var highlightedExpenseId: String?
     @State private var selectedPage: DetailPage = .activity
+    @State private var hScrollPosition = ScrollPosition(id: DetailPage.activity, anchor: .center)
     @State private var showAllMembers = false
     @State private var bannerTint: Color = Color(.systemBackground)
     @State private var bannerCollapsed = false
     @State private var currentScrollOffset: CGFloat = 0
     @State private var overscrollAmount: CGFloat = 0
+    @State private var horizontalOffset: CGFloat = UIScreen.main.bounds.width
+    @State private var isProgrammaticScroll = true
+    @State private var initialLayoutDone = false
+    @State private var pillFrames: [DetailPage: CGRect] = [:]
     @State private var membersScrollPos = ScrollPosition(edge: .top)
     @State private var activityScrollPos = ScrollPosition(edge: .top)
     @State private var balancesScrollPos = ScrollPosition(edge: .top)
     private let maxBannerHeight: CGFloat = 200
+
+    @State private var contentTopY: CGFloat = 100 // measured global Y of content area top
 
     enum DetailPage: Int, CaseIterable {
         case members = 0
@@ -109,29 +116,161 @@ struct GroupDetailScreen: View {
             bannerBackground
                 .ignoresSafeArea()
 
+            // Nav + capsule tint — single Canvas, no overlap possible
+
             // Pages + single shared tab bar
             ZStack(alignment: .top) {
-                TabView(selection: $selectedPage) {
-                    pageScrollView(page: .members, scrollPos: $membersScrollPos) { membersPage }
-                        .tag(DetailPage.members)
-                    pageScrollView(page: .activity, scrollPos: $activityScrollPos) {
-                        summaryStrip
-                            .padding(.bottom, 12)
-                        activityContent
+                // Measure where this ZStack starts in screen coordinates
+                Color.clear.frame(height: 0)
+                    .background {
+                        GeometryReader { geo in
+                            Color.clear.onAppear {
+                                contentTopY = geo.frame(in: .global).minY
+                            }
+                        }
                     }
-                    .tag(DetailPage.activity)
-                    pageScrollView(page: .balances, scrollPos: $balancesScrollPos) {
-                        summaryStrip
-                            .padding(.bottom, 12)
-                        balancesContent
+                // Horizontal paging — tracks finger position for pill animation
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 0) {
+                        pageScrollView(page: .members, scrollPos: $membersScrollPos) { membersPage }
+                            .id(DetailPage.members)
+                            .containerRelativeFrame(.horizontal)
+                        pageScrollView(page: .activity, scrollPos: $activityScrollPos) {
+                            summaryStrip
+                                .padding(.bottom, 12)
+                            activityContent
+                        }
+                        .id(DetailPage.activity)
+                        .containerRelativeFrame(.horizontal)
+                        pageScrollView(page: .balances, scrollPos: $balancesScrollPos) {
+                            summaryStrip
+                                .padding(.bottom, 12)
+                            balancesContent
+                        }
+                        .id(DetailPage.balances)
+                        .containerRelativeFrame(.horizontal)
                     }
-                    .tag(DetailPage.balances)
+                    .scrollTargetLayout()
                 }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-                .onChange(of: selectedPage) { _, _ in
-                    // Reset so pills match the new page's position
-                    if !bannerCollapsed {
-                        currentScrollOffset = 0
+                .scrollTargetBehavior(.viewAligned)
+                .scrollPosition($hScrollPosition)
+                .scrollIndicators(.hidden)
+                .onScrollGeometryChange(for: CGFloat.self) { geo in
+                    geo.contentOffset.x
+                } action: { _, xOffset in
+                    guard initialLayoutDone else { return }
+                    horizontalOffset = xOffset
+                    guard !isProgrammaticScroll else { return }
+                    // Determine which page is currently visible
+                    let pageWidth = UIScreen.main.bounds.width
+                    let pageIndex = Int((xOffset + pageWidth / 2) / pageWidth)
+                    let clamped = max(0, min(DetailPage.allCases.count - 1, pageIndex))
+                    let newPage = DetailPage.allCases[clamped]
+                    if newPage != selectedPage {
+                        selectedPage = newPage
+                        if !bannerCollapsed {
+                            currentScrollOffset = 0
+                        }
+                    }
+                }
+                .onChange(of: selectedPage) { _, newPage in
+                    isProgrammaticScroll = true
+                    withAnimation(.snappy(duration: 0.25)) {
+                        hScrollPosition.scrollTo(id: newPage, anchor: .center)
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        isProgrammaticScroll = false
+                    }
+                }
+                .task {
+                    // Ensure we start on Activity after layout is complete
+                    isProgrammaticScroll = true
+                    try? await Task.sleep(for: .milliseconds(50))
+                    hScrollPosition.scrollTo(id: DetailPage.activity, anchor: .center)
+                    try? await Task.sleep(for: .milliseconds(100))
+                    isProgrammaticScroll = false
+                    initialLayoutDone = true
+                }
+
+                // Style-specific backdrop behind pills
+                if hasBanner {
+                    let pillY = !hasBanner ? 0.0
+                        : bannerCollapsed ? min(bannerSpacerHeight, overscrollAmount)
+                        : max(0, bannerSpacerHeight - currentScrollOffset)
+
+                    switch tabBarStyle {
+                    case .materialStrip:
+                        // Frosted strip that clips content behind pills
+                        VStack(spacing: 0) {
+                            Rectangle().fill(.ultraThinMaterial)
+                                .frame(height: pillBarHeight + 12)
+                            LinearGradient(colors: [Color(.systemBackground).opacity(0.5), .clear],
+                                           startPoint: .top, endPoint: .bottom)
+                                .frame(height: 10)
+                        }
+                        .offset(y: pillY - 2)
+                        .allowsHitTesting(false)
+
+                    case .softTintBar:
+                        let scrollProgress = bannerCollapsed ? 1.0 : min(1, currentScrollOffset / bannerSpacerHeight)
+                        let tintOpacity = 0.35 + scrollProgress * 0.25 // 0.35 at rest → 0.6 at nav bar
+                        let fade: CGFloat = 36
+                        Canvas { context, size in
+                            let w = size.width
+                            let navEnd = contentTopY
+                            let pillTop = contentTopY + pillY
+                            let pillH = pillBarHeight + 8
+                            let pillBot = pillTop + pillH
+                            let gap = pillTop - navEnd
+
+                            // 1. Nav solid (screen top → start of fade/bridge)
+                            let navSolidEnd = gap > fade * 2 ? navEnd : navEnd // full solid to edge
+                            context.fill(Path(CGRect(x: 0, y: 0, width: w, height: navSolidEnd)),
+                                         with: .color(bannerTint.opacity(0.6)))
+
+                            // 2. Bridge / fades between nav and capsule
+                            if gap > 35 {
+                                // Large gap: independent fades, banner visible between
+                                context.fill(
+                                    Path(CGRect(x: 0, y: navEnd, width: w, height: fade)),
+                                    with: .linearGradient(
+                                        Gradient(colors: [bannerTint.opacity(0.6), .clear]),
+                                        startPoint: CGPoint(x: 0, y: navEnd),
+                                        endPoint: CGPoint(x: 0, y: navEnd + fade)))
+                                context.fill(
+                                    Path(CGRect(x: 0, y: pillTop - fade, width: w, height: fade)),
+                                    with: .linearGradient(
+                                        Gradient(colors: [.clear, bannerTint.opacity(tintOpacity)]),
+                                        startPoint: CGPoint(x: 0, y: pillTop - fade),
+                                        endPoint: CGPoint(x: 0, y: pillTop)))
+                            } else if gap > 0 {
+                                // Small gap: smooth gradient from nav opacity → capsule opacity
+                                context.fill(
+                                    Path(CGRect(x: 0, y: navEnd, width: w, height: gap)),
+                                    with: .linearGradient(
+                                        Gradient(colors: [bannerTint.opacity(0.6), bannerTint.opacity(tintOpacity)]),
+                                        startPoint: CGPoint(x: 0, y: navEnd),
+                                        endPoint: CGPoint(x: 0, y: pillTop)))
+                            }
+                            // gap == 0: they share the edge, nothing needed
+
+                            // 3. Capsule solid
+                            context.fill(Path(CGRect(x: 0, y: pillTop, width: w, height: pillH)),
+                                         with: .color(bannerTint.opacity(tintOpacity)))
+
+                            // 4. Capsule bottom fade
+                            context.fill(
+                                Path(CGRect(x: 0, y: pillBot, width: w, height: fade)),
+                                with: .linearGradient(
+                                    Gradient(colors: [bannerTint.opacity(tintOpacity), .clear]),
+                                    startPoint: CGPoint(x: 0, y: pillBot),
+                                    endPoint: CGPoint(x: 0, y: pillBot + fade)))
+                        }
+                        .ignoresSafeArea()
+                        .allowsHitTesting(false)
+
+                    case .extendedGradient:
+                        EmptyView() // Handled in bannerBackground gradient stops
                     }
                 }
 
@@ -139,8 +278,8 @@ struct GroupDetailScreen: View {
                 tabBar
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 2)
-                    .offset(y: bannerCollapsed
-                        ? min(bannerSpacerHeight, overscrollAmount)
+                    .offset(y: !hasBanner ? 0
+                        : bannerCollapsed ? min(bannerSpacerHeight, overscrollAmount)
                         : max(0, bannerSpacerHeight - currentScrollOffset))
             }
 
@@ -150,7 +289,7 @@ struct GroupDetailScreen: View {
         }
         .navigationTitle(groupName)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.automatic, for: .navigationBar)
+        .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
@@ -202,7 +341,7 @@ struct GroupDetailScreen: View {
 
                     VStack(spacing: 0) {
                         if let urlString = detail?.bannerUrl, let url = URL(string: urlString) {
-                            // Banner image + gradient overlay
+                            // Banner image + gradient overlays
                             ZStack {
                                 CachedBannerImage(url: url, height: bannerH) { color in
                                     bannerTint = color
@@ -210,8 +349,27 @@ struct GroupDetailScreen: View {
                                 .frame(width: geo.size.width, height: bannerH)
                                 .clipped()
 
+                                // Top fade — darkens behind nav title for readability
                                 LinearGradient(
                                     stops: [
+                                        .init(color: .black.opacity(0.4), location: 0),
+                                        .init(color: .black.opacity(0.15), location: 0.25),
+                                        .init(color: .clear, location: 0.45),
+                                    ],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                                .frame(height: bannerH)
+
+                                // Bottom fade — blends into tint color
+                                // extendedGradient starts earlier for more tint coverage at pill area
+                                LinearGradient(
+                                    stops: tabBarStyle == .extendedGradient ? [
+                                        .init(color: .clear, location: 0.2),
+                                        .init(color: bannerTint.opacity(0.5), location: 0.45),
+                                        .init(color: bannerTint.opacity(0.85), location: 0.65),
+                                        .init(color: bannerTint, location: 0.8),
+                                    ] : [
                                         .init(color: .clear, location: 0.4),
                                         .init(color: bannerTint.opacity(0.8), location: 0.7),
                                         .init(color: bannerTint, location: 1.0),
@@ -248,7 +406,7 @@ struct GroupDetailScreen: View {
     private let bannerSpacerHeight: CGFloat = 120
 
     private func pageScrollView<Content: View>(page: DetailPage, scrollPos: Binding<ScrollPosition>, @ViewBuilder content: @escaping () -> Content) -> some View {
-        let topInset = (hasBanner && !bannerCollapsed ? bannerSpacerHeight : 0) + pillBarHeight + 4
+        let topInset = (hasBanner && !bannerCollapsed ? bannerSpacerHeight : 0) + pillBarHeight + 16
 
         return ScrollView {
             VStack(spacing: 0) {
@@ -288,6 +446,37 @@ struct GroupDetailScreen: View {
     }
 
     // MARK: - Tab Bar
+    //
+    // Switch between options here:
+    //   .materialStrip  — frosted material strip behind pills, content clips below
+    //   .extendedGradient — banner gradient extends to cover pill area naturally
+    //   .softTintBar — bannerTint bar with soft faded edges above and below
+    //
+    private let tabBarStyle: TabBarStyle = .softTintBar
+
+    private enum TabBarStyle {
+        case materialStrip, extendedGradient, softTintBar
+    }
+
+    private var activePillColor: Color {
+        hasBanner ? .white : .primary
+    }
+
+    private var inactivePillColor: Color {
+        guard hasBanner else { return Color.secondary.opacity(0.5) }
+        switch tabBarStyle {
+        case .materialStrip:
+            return Color.secondary.opacity(0.6)
+        case .extendedGradient, .softTintBar:
+            return Color.white.opacity(0.7) // tint bg always present behind pills
+        }
+    }
+
+    private var fractionalPage: CGFloat {
+        let pageWidth = UIScreen.main.bounds.width
+        guard pageWidth > 0 else { return CGFloat(selectedPage.rawValue) }
+        return horizontalOffset / pageWidth
+    }
 
     private var tabBar: some View {
         HStack(spacing: 4) {
@@ -300,21 +489,61 @@ struct GroupDetailScreen: View {
                     Text(page.title)
                         .font(.subheadline)
                         .fontWeight(selectedPage == page ? .semibold : .medium)
-                        .foregroundStyle(selectedPage == page ? Color.primary : Color.secondary.opacity(0.5))
+                        .foregroundStyle(selectedPage == page ? activePillColor : inactivePillColor)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 7)
-                        .background {
-                            if selectedPage == page {
-                                Capsule()
-                                    .fill(.ultraThinMaterial)
-                                    .shadow(color: .black.opacity(0.06), radius: 3, y: 1)
+                        .background(
+                            GeometryReader { geo in
+                                Color.clear.onAppear {
+                                    pillFrames[page] = geo.frame(in: .named("tabBarCoord"))
+                                }
+                                .onChange(of: geo.size) { _, _ in
+                                    pillFrames[page] = geo.frame(in: .named("tabBarCoord"))
+                                }
                             }
-                        }
+                        )
                 }
                 .buttonStyle(.plain)
             }
         }
+        .coordinateSpace(name: "tabBarCoord")
+        .background(alignment: .topLeading) {
+            // Sliding capsule behind text — tracks the finger
+            if let pillFrame = interpolatedPillFrame {
+                Capsule()
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        Capsule()
+                            .strokeBorder(.white.opacity(0.5), lineWidth: 0.5)
+                    )
+                    .shadow(color: .black.opacity(0.08), radius: 4, y: 2)
+                    .frame(width: pillFrame.width, height: pillFrame.height)
+                    .offset(x: pillFrame.minX, y: pillFrame.minY)
+            }
+        }
         .padding(.vertical, 6)
+    }
+
+    private var interpolatedPillFrame: CGRect? {
+        let pages = DetailPage.allCases
+        let progress = fractionalPage
+        let clampedProgress = max(0, min(CGFloat(pages.count - 1), progress))
+
+        let fromIndex = Int(clampedProgress)
+        let toIndex = min(fromIndex + 1, pages.count - 1)
+        let fraction = clampedProgress - CGFloat(fromIndex)
+
+        guard let fromFrame = pillFrames[pages[fromIndex]],
+              let toFrame = pillFrames[pages[toIndex]] else {
+            return pillFrames[selectedPage]
+        }
+
+        return CGRect(
+            x: fromFrame.minX + (toFrame.minX - fromFrame.minX) * fraction,
+            y: fromFrame.minY + (toFrame.minY - fromFrame.minY) * fraction,
+            width: fromFrame.width + (toFrame.width - fromFrame.width) * fraction,
+            height: fromFrame.height + (toFrame.height - fromFrame.height) * fraction
+        )
     }
 
     // MARK: - Summary Strip
@@ -778,7 +1007,7 @@ private struct ExpenseRow: View {
 
 // MARK: - Cached Banner Image
 
-private struct CachedBannerImage: View {
+struct CachedBannerImage: View {
     let url: URL
     let height: CGFloat
     var onColorExtracted: ((Color) -> Void)?

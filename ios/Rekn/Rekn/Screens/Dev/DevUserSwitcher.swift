@@ -9,7 +9,7 @@ struct DevUserSwitcherPill: View {
     @Environment(AuthManager.self) private var authManager
     @Environment(GroupStore.self) private var groupStore
     @Environment(InviteStore.self) private var inviteStore
-    @State private var devStore = DevUserStore()
+    let devStore: DevUserStore
     @State private var showingSwitcher = false
 
     var body: some View {
@@ -19,7 +19,6 @@ struct DevUserSwitcherPill: View {
                     .transition(.opacity.combined(with: .move(edge: .leading)))
             }
         }
-        .task { await devStore.probe() }
     }
 
     private var pill: some View {
@@ -181,7 +180,7 @@ private struct DevUserSwitcherSheet: View {
 }
 
 #Preview {
-    DevUserSwitcherPill()
+    DevUserSwitcherPill(devStore: DevUserStore())
         .environment(AuthManager())
         .environment(GroupStore())
         .environment(InviteStore())

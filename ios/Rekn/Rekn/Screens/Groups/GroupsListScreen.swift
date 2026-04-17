@@ -4,13 +4,24 @@ struct GroupsListScreen: View {
     @Binding var path: NavigationPath
     @Environment(GroupStore.self) private var groupStore
     @Environment(AuthManager.self) private var authManager
+    @Environment(InviteStore.self) private var inviteStore
     @State private var showingCreateGroup = false
     @State private var showingSettings = false
     @State private var scrollOffset: CGFloat = 0
+    @State private var inviteError: String?
 
     private var groups: [GroupSummary] {
         if case .loaded(let g) = groupStore.groupsState { return g }
         return []
+    }
+
+    private var pendingInvites: [PendingInvite] {
+        if case .loaded(let invites) = inviteStore.pendingState { return invites }
+        return []
+    }
+
+    private var showInvitesForCurrentUser: Bool {
+        !(authManager.currentUser?.isGuest ?? true)
     }
 
     private var totalOwed: Int {
@@ -106,10 +117,50 @@ struct GroupsListScreen: View {
                 .presentationDragIndicator(.visible)
         }
         .task {
-            await groupStore.loadGroups()
+            async let groupsTask: () = groupStore.loadGroups()
+            async let invitesTask: () = showInvitesForCurrentUser
+                ? inviteStore.loadPending()
+                : ()
+            _ = await (groupsTask, invitesTask)
         }
         .refreshable {
-            await groupStore.loadGroups(forceReload: true)
+            async let groupsTask: () = groupStore.loadGroups(forceReload: true)
+            async let invitesTask: () = showInvitesForCurrentUser
+                ? inviteStore.loadPending(forceReload: true)
+                : ()
+            _ = await (groupsTask, invitesTask)
+        }
+        .alert("Couldn't update invite", isPresented: .constant(inviteError != nil)) {
+            Button("OK") { inviteError = nil }
+        } message: {
+            Text(inviteError ?? "")
+        }
+    }
+
+    // MARK: - Invite Actions
+
+    private func handleAccept(_ invite: PendingInvite) {
+        Task {
+            do {
+                _ = try await inviteStore.accept(inviteId: invite.id)
+                await groupStore.loadGroups(forceReload: true)
+            } catch let error as APIError {
+                inviteError = error.errorDescription ?? "Couldn't accept invite"
+            } catch {
+                inviteError = "Couldn't accept invite"
+            }
+        }
+    }
+
+    private func handleDecline(_ invite: PendingInvite) {
+        Task {
+            do {
+                try await inviteStore.decline(inviteId: invite.id)
+            } catch let error as APIError {
+                inviteError = error.errorDescription ?? "Couldn't decline invite"
+            } catch {
+                inviteError = "Couldn't decline invite"
+            }
         }
     }
 
@@ -132,6 +183,14 @@ struct GroupsListScreen: View {
             // 2. ScrollView — cards scroll over the backdrop
             ScrollView {
                 VStack(spacing: 12) {
+                    if showInvitesForCurrentUser, !pendingInvites.isEmpty {
+                        PendingInvitesCard(
+                            invites: pendingInvites,
+                            onAccept: handleAccept,
+                            onDecline: handleDecline
+                        )
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
                     ForEach(groups) { group in
                         NavigationLink(value: group.id) {
                             GroupCard(group: group)
@@ -141,6 +200,7 @@ struct GroupsListScreen: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
+                .animation(.snappy(duration: 0.25), value: pendingInvites.map(\.id))
             }
             .contentMargins(.top, 80, for: .scrollContent)
             .scrollIndicators(.hidden)
@@ -343,5 +403,6 @@ struct CardPressStyle: ButtonStyle {
         GroupsListScreen(path: $path)
             .environment(GroupStore())
             .environment(AuthManager())
+            .environment(InviteStore())
     }
 }

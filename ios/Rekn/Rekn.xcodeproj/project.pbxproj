@@ -148,7 +148,7 @@
 		E263992EA3FB89E49C1DC3D3 /* GroupDetailPreviews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupDetailPreviews.swift; sourceTree = "<group>"; };
 		E5D3520E30D0FAE73AE216CA /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		E5E80C26305138B8DD094C29 /* AddExpenseModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddExpenseModel.swift; sourceTree = "<group>"; };
-		E8DD70A00AF03E72E27509D9 /* Rekn.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Rekn.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E8DD70A00AF03E72E27509D9 /* Rekn.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Rekn.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E931A3855F6AB42BC2015C21 /* ReknUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = ReknUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F14B3A1C1F4343CC25DEA84B /* SettlementDetailScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettlementDetailScreen.swift; sourceTree = "<group>"; };
 		F8B9F07453C46F72812AC8EF /* InviteStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteStore.swift; sourceTree = "<group>"; };
@@ -425,7 +425,6 @@
 						TestTargetID = 938247ACE40C2122044376A9;
 					};
 					938247ACE40C2122044376A9 = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -678,7 +677,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = WSHTD5Z42B;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Rekn/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -772,7 +771,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = WSHTD5Z42B;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Rekn/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (

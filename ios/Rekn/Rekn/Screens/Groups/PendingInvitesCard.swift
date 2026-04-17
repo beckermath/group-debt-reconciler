@@ -41,11 +41,12 @@ struct PendingInviteCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             identityRow
             actionRow
         }
-        .padding(16)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .cardStyle()
         .overlay(alignment: .leading) {
@@ -98,14 +99,14 @@ struct PendingInviteCard: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            .frame(maxWidth: .infinity, minHeight: 44, alignment: .center)
+            .frame(maxWidth: .infinity, minHeight: 32, alignment: .center)
         } else if useVerticalButtons {
-            VStack(spacing: 8) {
+            VStack(spacing: 6) {
                 acceptButton
                 declineButton
             }
         } else {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 declineButton
                 acceptButton
             }
@@ -115,25 +116,25 @@ struct PendingInviteCard: View {
     private var acceptButton: some View {
         Button(action: onAccept) {
             Text("Accept")
-                .font(.subheadline)
+                .font(.footnote)
                 .fontWeight(.semibold)
-                .frame(maxWidth: .infinity, minHeight: 44)
+                .frame(maxWidth: .infinity)
         }
         .buttonStyle(.borderedProminent)
-        .controlSize(.large)
+        .controlSize(.regular)
         .tint(Color.brandSecondary)
     }
 
     private var declineButton: some View {
         Button { showingDeclineConfirm = true } label: {
             Text("Decline")
-                .font(.subheadline)
+                .font(.footnote)
                 .fontWeight(.medium)
                 .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, minHeight: 44)
+                .frame(maxWidth: .infinity)
         }
         .buttonStyle(.bordered)
-        .controlSize(.large)
+        .controlSize(.regular)
         .tint(.secondary)
     }
 }

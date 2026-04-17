@@ -82,9 +82,16 @@ struct GroupsListScreen: View {
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button { showingSettings = true } label: {
-                    Image(systemName: "gearshape")
-                        .foregroundStyle(.white)
+                    MemberAvatar(
+                        name: authManager.currentUser?.name ?? "?",
+                        imageUrl: authManager.currentUser?.imageUrl,
+                        size: 30
+                    )
+                    .overlay(
+                        Circle().stroke(.white.opacity(0.35), lineWidth: 1)
+                    )
                 }
+                .accessibilityLabel("Settings")
             }
             ToolbarItem(placement: .principal) {
                 Text("Your Groups")

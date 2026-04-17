@@ -49,13 +49,6 @@ struct PendingInviteCard: View {
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .cardStyle()
-        .overlay(alignment: .leading) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(Color.brandSecondary)
-                .frame(width: 3)
-                .padding(.vertical, 10)
-                .padding(.leading, 1)
-        }
         .confirmationDialog(
             "Decline invite to \(invite.groupName)?",
             isPresented: $showingDeclineConfirm,

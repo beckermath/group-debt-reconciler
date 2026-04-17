@@ -86,10 +86,9 @@ struct GroupsListScreen: View {
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button { showingSettings = true } label: {
-                    MemberAvatar(
+                    NavProfileAvatar(
                         name: authManager.currentUser?.name ?? "?",
-                        imageUrl: authManager.currentUser?.imageUrl,
-                        size: 32
+                        imageUrl: authManager.currentUser?.imageUrl
                     )
                 }
                 .buttonStyle(.plain)
@@ -235,10 +234,12 @@ struct GroupsListScreen: View {
                 scrollOffset = max(0, offset)
             }
 
-            // 3. Foreground teal — slightly transparent so content is faintly visible
+            // 3. Foreground teal — slightly transparent so content is faintly visible.
+            // Shorter when there's no balance (covers just the nav bar region) so cards
+            // don't start hidden beneath a large overlay.
             VStack(spacing: 0) {
                 Color.brandPrimary.opacity(0.92)
-                    .frame(height: 180)
+                    .frame(height: hasBalanceToShow ? 180 : 100)
                 // Fade grows as user scrolls
                 let fadeAmount = min(40, scrollOffset * 0.8)
                 if fadeAmount > 0 {
@@ -407,6 +408,56 @@ private struct GroupCard: View {
         }
         .padding(16)
         .cardStyle()
+    }
+}
+
+// MARK: - Nav Profile Avatar
+
+/// Tight 32pt profile avatar for the nav bar. Unlike the shared `MemberAvatar`
+/// it doesn't reserve extra space for a selection ring, so it sits flush.
+private struct NavProfileAvatar: View {
+    let name: String
+    let imageUrl: String?
+    var size: CGFloat = 32
+
+    private var initial: String {
+        String(name.first.map(String.init) ?? "?").uppercased()
+    }
+
+    private var gradientPair: (Color, Color) {
+        // Deterministic gradient from the name (same style as MemberAvatar).
+        let pairs: [(Color, Color)] = [
+            (Color(red: 0.36, green: 0.13, blue: 0.73), Color(red: 0.34, green: 0.16, blue: 0.86)),
+            (Color(red: 0.25, green: 0.56, blue: 0.82), Color(red: 0.21, green: 0.36, blue: 0.85)),
+            (Color(red: 0.32, green: 0.65, blue: 0.42), Color(red: 0.25, green: 0.52, blue: 0.62)),
+            (Color(red: 0.72, green: 0.35, blue: 0.15), Color(red: 0.58, green: 0.16, blue: 0.68)),
+            (Color(red: 0.36, green: 0.13, blue: 0.93), Color(red: 0.28, green: 0.16, blue: 1.0)),
+            (Color(red: 0.45, green: 0.65, blue: 0.18), Color(red: 0.25, green: 0.52, blue: 0.42)),
+            (Color(red: 0.72, green: 0.13, blue: 0.58), Color(red: 0.58, green: 0.16, blue: 0.68)),
+            (Color(red: 0.25, green: 0.62, blue: 0.55), Color(red: 0.21, green: 0.42, blue: 0.75)),
+        ]
+        return pairs[abs(name.hashValue) % pairs.count]
+    }
+
+    var body: some View {
+        let (from, to) = gradientPair
+        ZStack {
+            Circle()
+                .fill(LinearGradient(colors: [from, to], startPoint: .topLeading, endPoint: .bottomTrailing))
+            Text(initial)
+                .font(.system(size: size * 0.4, weight: .semibold))
+                .foregroundStyle(.white)
+
+            if let imageUrl, !imageUrl.isEmpty, let url = URL(string: imageUrl) {
+                AsyncImage(url: url) { image in
+                    image.resizable().aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Color.clear
+                }
+                .clipShape(Circle())
+            }
+        }
+        .frame(width: size, height: size)
     }
 }
 

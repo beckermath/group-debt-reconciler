@@ -3,86 +3,157 @@ import SwiftUI
 struct ExpenseDetailScreen: View {
     let expense: Expense
     let groupId: String
+    var onEdited: (() -> Void)?
 
     @Environment(\.dismiss) private var dismiss
     @Environment(GroupStore.self) private var groupStore
     @State private var showDeleteConfirmation = false
+    @State private var showEditExpense = false
+    @State private var editWasSaved = false
     @State private var isDeleting = false
     @State private var error: String?
 
+    private var members: [GroupMember] {
+        if case .loaded(let detail) = groupStore.detailState {
+            return detail.members
+        }
+        return []
+    }
+
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                // Hero amount
-                VStack(spacing: 8) {
-                    Text(formatCents(expense.amount))
-                        .font(.system(size: 36, weight: .bold, design: .rounded))
-                    Text(expense.description)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 24)
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Amount + description
+                    VStack(spacing: 6) {
+                        Text(formatCents(expense.amount))
+                            .font(.system(size: 32, weight: .bold))
+                            .foregroundStyle(Color.brandPrimary)
+                        Text(expense.description)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Text(expense.createdAt.formatted(.dateTime.month(.abbreviated).day().year()))
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 8)
 
-                // Details card
-                SectionCard(header: "Details") {
+                    // Paid by card
                     VStack(spacing: 0) {
-                        detailRow(label: "Paid by", value: expense.paidByName)
-                        Divider().padding(.horizontal, 12)
-                        detailRow(label: "Split between", value: "\(expense.splitCount) people")
-                        Divider().padding(.horizontal, 12)
-                        detailRow(label: "Per person", value: formatCents(expense.amount / max(expense.splitCount, 1)))
-                        Divider().padding(.horizontal, 12)
-                        detailRow(label: "Date", value: expense.createdAt.formatted(.dateTime.month(.abbreviated).day().year().hour().minute()))
-                    }
-                }
-                .padding(.horizontal)
-
-                if let error {
-                    Text(error)
-                        .font(.caption)
-                        .foregroundStyle(Color.balanceNegative)
-                        .padding(.horizontal)
-                }
-
-                // Delete button
-                Button(role: .destructive) {
-                    showDeleteConfirmation = true
-                } label: {
-                    if isDeleting {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                    } else {
-                        HStack {
-                            Image(systemName: "trash")
-                            Text("Delete Expense")
+                        HStack(spacing: 10) {
+                            MemberAvatar(name: expense.paidByName, imageUrl: expense.paidByImageUrl, size: 32)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("Paid by")
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                                Text(expense.paidByName)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                            }
+                            Spacer()
+                            Text(formatCents(expense.amount))
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
                         }
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 16)
+                    }
+                    .background(.background, in: .rect(cornerRadius: 14))
+                    .shadow(color: .black.opacity(0.05), radius: 4, y: 2)
+                    .padding(.horizontal, 16)
+
+                    // Split details
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("SPLIT BETWEEN")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundStyle(.secondary)
+                            .tracking(0.5)
+                            .padding(.horizontal, 20)
+
+                        VStack(spacing: 0) {
+                            detailRow(label: "People", value: "\(expense.splitCount)")
+                            Divider().padding(.horizontal, 16)
+                            detailRow(label: "Per person", value: formatCents(expense.amount / max(expense.splitCount, 1)))
+                        }
+                        .background(.background, in: .rect(cornerRadius: 14))
+                        .shadow(color: .black.opacity(0.05), radius: 4, y: 2)
+                        .padding(.horizontal, 16)
+                    }
+
+                    if let error {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundStyle(Color.balanceNegative)
+                            .padding(.horizontal, 16)
+                    }
+
+                    // Delete button
+                    Button(role: .destructive) {
+                        showDeleteConfirmation = true
+                    } label: {
+                        if isDeleting {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            HStack {
+                                Image(systemName: "trash")
+                                Text("Delete Expense")
+                            }
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                    .disabled(isDeleting)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 4)
+                }
+            }
+            .background(WarmGradientBackground().ignoresSafeArea())
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { dismiss() }
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button { showEditExpense = true } label: {
+                        Image(systemName: "pencil")
                     }
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-                .disabled(isDeleting)
-                .padding(.horizontal)
-                .padding(.top, 8)
+            }
+            .sheet(isPresented: $showEditExpense, onDismiss: {
+                if editWasSaved {
+                    onEdited?()
+                    dismiss()
+                    editWasSaved = false
+                }
+            }) {
+                AddExpenseScreen(
+                    groupId: groupId,
+                    memberList: members,
+                    currentUserId: nil,
+                    editingExpenseId: expense.id,
+                    prefill: expense,
+                    onSaved: { editWasSaved = true }
+                )
+            }
+            .confirmationDialog(
+                "Delete this expense?",
+                isPresented: $showDeleteConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Delete", role: .destructive) {
+                    Task { await deleteExpense() }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This will remove \"\(expense.description)\" and recalculate all balances. This cannot be undone.")
             }
         }
-        .navigationTitle("Expense")
-        .navigationBarTitleDisplayMode(.inline)
-        .confirmationDialog(
-            "Delete this expense?",
-            isPresented: $showDeleteConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("Delete", role: .destructive) {
-                Task { await deleteExpense() }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("This will remove \"\(expense.description)\" and recalculate all balances. This cannot be undone.")
-        }
+        .sensoryFeedback(.warning, trigger: isDeleting)
     }
 
     private func detailRow(label: String, value: String) -> some View {
@@ -96,7 +167,7 @@ struct ExpenseDetailScreen: View {
                 .fontWeight(.medium)
         }
         .padding(.vertical, 10)
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 16)
     }
 
     private func deleteExpense() async {
@@ -117,8 +188,11 @@ struct ExpenseDetailScreen: View {
 }
 
 #Preview {
-    NavigationStack {
-        ExpenseDetailScreen(expense: Expense.previews[0], groupId: "1")
-            .environment(GroupStore())
-    }
+    Text("Preview")
+        .sheet(isPresented: .constant(true)) {
+            ExpenseDetailScreen(expense: Expense.previews[0], groupId: "1")
+                .environment(GroupStore())
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+        }
 }

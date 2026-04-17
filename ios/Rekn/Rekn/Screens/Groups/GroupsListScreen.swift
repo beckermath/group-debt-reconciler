@@ -85,13 +85,13 @@ struct GroupsListScreen: View {
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button { showingSettings = true } label: {
-                    NavProfileAvatar(
-                        name: authManager.currentUser?.name ?? "?",
-                        imageUrl: authManager.currentUser?.imageUrl
-                    )
-                }
-                .buttonStyle(.plain)
+                NavProfileAvatar(
+                    name: authManager.currentUser?.name ?? "?",
+                    imageUrl: authManager.currentUser?.imageUrl
+                )
+                .contentShape(Circle())
+                .onTapGesture { showingSettings = true }
+                .accessibilityAddTraits(.isButton)
                 .accessibilityLabel("Settings")
             }
             ToolbarItem(placement: .principal) {
@@ -449,12 +449,9 @@ private struct NavProfileAvatar: View {
                 .foregroundStyle(.white)
 
             if let imageUrl, !imageUrl.isEmpty, let url = URL(string: imageUrl) {
-                AsyncImage(url: url) { image in
-                    image.resizable().aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    Color.clear
-                }
-                .clipShape(Circle())
+                // Reuse the shared AvatarCache so the nav avatar stays in sync
+                // with every other avatar for the same user.
+                CachedAvatarImage(url: url, size: size)
             }
         }
         .frame(width: size, height: size)

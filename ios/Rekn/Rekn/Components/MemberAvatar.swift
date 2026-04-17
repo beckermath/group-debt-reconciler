@@ -70,11 +70,22 @@ struct MemberAvatar: View {
 
 // MARK: - Cached Avatar Image
 
-/// Loads and caches avatar images in memory. Shows nothing until loaded, then fades in.
-private struct CachedAvatarImage: View {
+/// Loads and caches avatar images in memory. Reads the cache synchronously
+/// on init so if an image was previously loaded, it renders on the very
+/// first frame — no flash of the placeholder letter when scrolling lists
+/// or navigating between screens.
+struct CachedAvatarImage: View {
     let url: URL
     let size: CGFloat
     @State private var image: UIImage?
+
+    init(url: URL, size: CGFloat) {
+        self.url = url
+        self.size = size
+        // Seed from the in-memory cache so a warm avatar renders immediately
+        // rather than flashing the letter placeholder first.
+        self._image = State(initialValue: AvatarCache.shared.get(url))
+    }
 
     var body: some View {
         ZStack {
@@ -88,6 +99,7 @@ private struct CachedAvatarImage: View {
         }
         .frame(width: size, height: size)
         .task(id: url) {
+            if image != nil { return } // already hydrated from cache
             if let cached = AvatarCache.shared.get(url) {
                 image = cached
                 return

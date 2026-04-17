@@ -11,6 +11,8 @@ struct PhoneEntryScreen: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 32) {
+                StepProgressBar(totalSteps: 3, currentStep: 0)
+
                 Spacer()
 
                 // Logo

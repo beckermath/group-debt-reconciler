@@ -59,6 +59,8 @@ struct SplitModeScreen: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(WarmGradientBackground().ignoresSafeArea())
         .navigationTitle("Split")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -92,7 +94,7 @@ struct SplitModeScreen: View {
             if !model.selectedMemberIds.isEmpty, model.amountCents > 0 {
                 VStack(spacing: 4) {
                     Text(formatCents(model.amountCents / model.selectedMemberIds.count))
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .font(.system(size: 28, weight: .bold))
                     Text("per person")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)

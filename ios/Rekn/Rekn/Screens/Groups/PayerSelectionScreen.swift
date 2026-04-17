@@ -26,6 +26,8 @@ struct PayerSelectionScreen: View {
             }
         }
         .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .background(WarmGradientBackground().ignoresSafeArea())
         .navigationTitle("Who paid?")
         .navigationBarTitleDisplayMode(.inline)
     }

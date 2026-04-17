@@ -18,6 +18,8 @@ struct MemberPickerScreen: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            StepProgressBar(totalSteps: 2, currentStep: 1)
+
             // Search bar
             searchBar
                 .padding(.horizontal, 16)
@@ -82,6 +84,7 @@ struct MemberPickerScreen: View {
                 .padding(.bottom, 80)
             }
         }
+        .background(WarmGradientBackground().ignoresSafeArea())
         .navigationTitle("Add People")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {

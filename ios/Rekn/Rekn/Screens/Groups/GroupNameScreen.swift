@@ -12,6 +12,8 @@ struct GroupNameScreen: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            StepProgressBar(totalSteps: 2, currentStep: 0)
+
             Spacer()
 
             Image(systemName: "person.3.fill")
@@ -80,6 +82,7 @@ struct GroupNameScreen: View {
             .padding(.bottom, 16)
         }
         .onTapGesture { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
+        .background(WarmGradientBackground().ignoresSafeArea())
         .navigationTitle("New Group")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: $showingAddMembers) {

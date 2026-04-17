@@ -14,7 +14,10 @@ struct SettingsScreen: View {
     private var isGuest: Bool { authManager.isGuest }
     private var userImageUrl: String? { authManager.currentUser?.imageUrl }
 
+    @Environment(\.dismiss) private var dismiss
+
     var body: some View {
+        NavigationStack {
         ScrollView {
             VStack(spacing: 20) {
                 // Profile card with photo
@@ -62,11 +65,18 @@ struct SettingsScreen: View {
             .padding(.horizontal)
             .padding(.top, 8)
         }
+        .background(WarmGradientBackground().ignoresSafeArea())
         .navigationTitle("Settings")
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Done") { dismiss() }
+            }
+        }
         .onChange(of: selectedItem) { _, newItem in
             guard let newItem else { return }
             Task { await uploadPhoto(item: newItem) }
         }
+        } // NavigationStack
     }
 
     // MARK: - Profile Card

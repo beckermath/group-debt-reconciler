@@ -3,12 +3,16 @@ import SwiftUI
 extension Color {
     // MARK: - Brand Colors
 
-    /// Primary brand: Warm Slate
+    /// Primary brand: Teal
     static let brand = Color.accentColor
 
-    /// Secondary brand: Blush
-    static let brandSecondary = Color(light: .init(red: 0.831, green: 0.565, blue: 0.478),
-                                       dark: .init(red: 0.894, green: 0.706, blue: 0.635))
+    /// Primary brand explicit: #2D7D9A
+    static let brandPrimary = Color(light: .init(red: 0.176, green: 0.490, blue: 0.604),
+                                     dark: .init(red: 0.275, green: 0.588, blue: 0.706))
+
+    /// Secondary brand: Vivid Lavender #8B6CC1
+    static let brandSecondary = Color(light: .init(red: 0.545, green: 0.424, blue: 0.757),
+                                       dark: .init(red: 0.631, green: 0.522, blue: 0.824))
 
     /// Accent brand: Warm Gold (celebrations, badges)
     static let brandAccent = Color(light: .init(red: 0.788, green: 0.659, blue: 0.298),
@@ -16,16 +20,42 @@ extension Color {
 
     // MARK: - Semantic Financial Colors
 
-    /// Positive balance (you are owed): Sage Green
-    static let balancePositive = Color(light: .init(red: 0.357, green: 0.620, blue: 0.447),
-                                        dark: .init(red: 0.435, green: 0.722, blue: 0.510))
+    /// Positive balance (you are owed): Signal Green #2E9E5E
+    static let balancePositive = Color(light: .init(red: 0.180, green: 0.620, blue: 0.369),
+                                        dark: .init(red: 0.275, green: 0.722, blue: 0.463))
 
-    /// Negative balance (you owe): Soft Red
-    static let balanceNegative = Color(light: .init(red: 0.761, green: 0.439, blue: 0.400),
-                                        dark: .init(red: 0.851, green: 0.541, blue: 0.502))
+    /// Negative balance (you owe): Signal Red #D94452
+    static let balanceNegative = Color(light: .init(red: 0.851, green: 0.267, blue: 0.322),
+                                        dark: .init(red: 0.898, green: 0.380, blue: 0.420))
 
     /// Settled state
     static let balanceSettled = Color.secondary
+
+    // MARK: - Page Background
+
+    /// Plain white / system background
+    static let warmBackgroundTop = Color(.systemBackground)
+    static let warmBackgroundBottom = Color(.systemBackground)
+}
+
+// MARK: - Reusable Views
+
+/// Plain background — used across all screens
+struct WarmGradientBackground: View {
+    var body: some View {
+        Color(.systemBackground)
+    }
+}
+
+// MARK: - Card Style
+
+extension View {
+    /// Copilot-style card: generous corner radius, soft shadow, no border
+    func cardStyle() -> some View {
+        self
+            .background(.background, in: .rect(cornerRadius: 16))
+            .shadow(color: .black.opacity(0.06), radius: 10, y: 4)
+    }
 }
 
 // MARK: - Light/Dark Adaptive Color Helper

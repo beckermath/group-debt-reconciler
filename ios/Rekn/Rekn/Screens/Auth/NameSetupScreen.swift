@@ -9,6 +9,8 @@ struct NameSetupScreen: View {
 
     var body: some View {
         VStack(spacing: 32) {
+            StepProgressBar(totalSteps: 3, currentStep: 2)
+
             Spacer()
 
             VStack(spacing: 8) {

@@ -14,6 +14,7 @@ private func mockGroupStore() -> GroupStore {
             GroupMember(id: "m3", name: "Eddie", userId: nil, isRemoved: false, imageUrl: nil),
             GroupMember(id: "m4", name: "Eva", userId: nil, isRemoved: false, imageUrl: nil),
         ],
+        removedMembers: [],
         balances: [
             BalanceEntry(memberId: "m1", name: "Becker", imageUrl: nil, balanceCents: 16875, maxAbsBalance: 16875),
             BalanceEntry(memberId: "m2", name: "Mickey", imageUrl: nil, balanceCents: -5625, maxAbsBalance: 16875),
@@ -36,7 +37,8 @@ private func mockGroupStore() -> GroupStore {
         settlements: [
             Settlement(id: "s1", settledAt: Calendar.current.date(byAdding: .day, value: -1, to: Date())!, settledByName: "Becker", expenseCount: 9, totalCents: 44925),
             Settlement(id: "s2", settledAt: Calendar.current.date(byAdding: .day, value: -3, to: Date())!, settledByName: "Becker", expenseCount: 9, totalCents: 44925),
-        ]
+        ],
+        allExpenses: []
     ))
     return store
 }

@@ -6,6 +6,11 @@ enum LoadState<T: Sendable>: Sendable {
     case loading
     case loaded(T)
     case failed(String)
+
+    var isLoaded: Bool {
+        if case .loaded = self { return true }
+        return false
+    }
 }
 
 @Observable
@@ -105,6 +110,25 @@ final class GroupStore: @unchecked Sendable {
         )
     }
 
+    func updateExpense(groupId: String, expenseId: String, description: String, amount: Double, paidBy: String, splitWith: [String], splitMode: String = "equal", customAmounts: [String: String] = [:]) async throws(APIError) {
+        struct Body: Encodable {
+            let description: String
+            let amount: Double
+            let paidBy: String
+            let splitWith: [String]
+            let splitMode: String
+            let customAmounts: [String: String]
+        }
+        struct Response: Decodable { let expenseId: String }
+        let _: Response = try await APIClient.shared.request(
+            Endpoint(
+                path: "groups/\(groupId)/expenses/\(expenseId)",
+                method: .patch,
+                body: Body(description: description, amount: amount, paidBy: paidBy, splitWith: splitWith, splitMode: splitMode, customAmounts: customAmounts)
+            )
+        )
+    }
+
     func deleteExpense(groupId: String, expenseId: String) async throws(APIError) {
         try await APIClient.shared.requestNoContent(
             Endpoint(path: "groups/\(groupId)/expenses/\(expenseId)", method: .delete)
@@ -176,12 +200,55 @@ final class GroupStore: @unchecked Sendable {
         )
     }
 
+    func deleteGroup(id: String) async throws(APIError) {
+        try await APIClient.shared.requestNoContent(
+            GroupsEndpoint.delete(id: id)
+        )
+    }
+
+    func removeMember(groupId: String, memberId: String) async throws(APIError) {
+        struct Body: Encodable { let action: String }
+        struct Response: Decodable { let memberId: String; let status: String }
+        let _: Response = try await APIClient.shared.request(
+            Endpoint(path: "groups/\(groupId)/members/\(memberId)", method: .patch, body: Body(action: "remove"))
+        )
+    }
+
+    func createInviteLink(groupId: String) async throws(APIError) -> String {
+        struct Response: Decodable { let code: String }
+        let result: Response = try await APIClient.shared.request(
+            InvitesEndpoint.create(groupId: groupId)
+        )
+        return result.code
+    }
+
+    func restoreMember(groupId: String, memberId: String) async throws(APIError) {
+        struct Body: Encodable { let action: String }
+        struct Response: Decodable { let memberId: String; let status: String }
+        let _: Response = try await APIClient.shared.request(
+            Endpoint(path: "groups/\(groupId)/members/\(memberId)", method: .patch, body: Body(action: "restore"))
+        )
+    }
+
+    func undoSettlement(groupId: String, settlementId: String) async throws(APIError) {
+        try await APIClient.shared.requestNoContent(
+            SettlementsEndpoint.undo(groupId: groupId, settlementId: settlementId)
+        )
+    }
+
     // MARK: - Transform API → View Models
 
     private func buildGroupDetail(from api: APIGroupDetail) -> GroupDetail {
         let memberMap = Dictionary(uniqueKeysWithValues: api.members.map { ($0.id, $0.name) })
+        let removedMemberIds = Set(api.members.filter { $0.isRemoved }.map(\.id))
+        // Display name with "(removed)" suffix for labels, clean name for avatars
+        func displayName(for memberId: String) -> String {
+            let name = memberMap[memberId] ?? "Unknown"
+            return removedMemberIds.contains(memberId) ? "\(name) (removed)" : name
+        }
         let memberImageMap = Dictionary(uniqueKeysWithValues: api.members.map { ($0.id, $0.imageUrl) })
         let activeMembers = api.members.filter { !$0.isRemoved }
+        let removedMembers = api.members.filter { $0.isRemoved }
         let maxAbs = api.balances.values.map { abs($0) }.max() ?? 0
 
         let balanceEntries = activeMembers.map { member in
@@ -228,14 +295,37 @@ final class GroupStore: @unchecked Sendable {
                 )
             }
 
-        let settlementViewModels = settlements.map { s in
+        // Build all expenses (including settled) for settlement detail views
+        let allExpensesSorted = api.expenses
+            .sorted { $0.createdAt > $1.createdAt }
+            .map { expense in
+                Expense(
+                    id: expense.id,
+                    description: expense.description,
+                    amount: expense.amount,
+                    paidByName: memberMap[expense.paidBy] ?? "Unknown",
+                    paidByMemberId: expense.paidBy,
+                    paidByImageUrl: memberImageMap[expense.paidBy] ?? nil,
+                    splitCount: expense.splits.count,
+                    createdAt: parseAPIDate(expense.createdAt) ?? Date()
+                )
+            }
+
+        // Compute settlement expense counts using timestamp windows
+        let settlementViewModels: [Settlement] = settlements.enumerated().map { index, s in
+            let settledAt = parseAPIDate(s.settledAt) ?? Date()
+            let prevDate = index + 1 < settlements.count
+                ? parseAPIDate(settlements[index + 1].settledAt)
+                : nil
             let periodExpenses = api.expenses.filter { e in
-                // Simplified — count expenses before this settlement
-                true
+                guard let expDate = parseAPIDate(e.createdAt) else { return false }
+                let beforeCurrent = expDate <= settledAt
+                let afterPrev = prevDate.map { expDate > $0 } ?? true
+                return afterPrev && beforeCurrent
             }
             return Settlement(
                 id: s.id,
-                settledAt: parseAPIDate(s.settledAt) ?? Date(),
+                settledAt: settledAt,
                 settledByName: memberMap[s.settledBy] ?? "Unknown",
                 expenseCount: periodExpenses.count,
                 totalCents: periodExpenses.reduce(0) { $0 + $1.amount }
@@ -249,10 +339,14 @@ final class GroupStore: @unchecked Sendable {
             members: activeMembers.map { m in
                 GroupMember(id: m.id, name: m.name, userId: m.userId, isRemoved: m.isRemoved, imageUrl: m.imageUrl)
             },
+            removedMembers: removedMembers.map { m in
+                GroupMember(id: m.id, name: m.name, userId: m.userId, isRemoved: m.isRemoved, imageUrl: m.imageUrl)
+            },
             balances: balanceEntries,
             transfers: transfers,
             expenses: currentExpenses,
-            settlements: settlementViewModels
+            settlements: settlementViewModels,
+            allExpenses: allExpensesSorted
         )
     }
 
@@ -274,8 +368,23 @@ struct GroupDetail {
     let name: String
     let bannerUrl: String?
     let members: [GroupMember]
+    let removedMembers: [GroupMember]
     let balances: [BalanceEntry]
     let transfers: [Transfer]
     let expenses: [Expense]
     let settlements: [Settlement]
+    let allExpenses: [Expense] // includes settled expenses, for settlement detail views
+
+    func expenses(for settlement: Settlement) -> [Expense] {
+        let sortedSettlements = settlements.sorted { $0.settledAt > $1.settledAt }
+        let index = sortedSettlements.firstIndex(where: { $0.id == settlement.id })
+        let prevDate = index.flatMap { i in
+            i + 1 < sortedSettlements.count ? sortedSettlements[i + 1].settledAt : nil
+        }
+        return allExpenses.filter { expense in
+            let beforeCurrent = expense.createdAt <= settlement.settledAt
+            let afterPrev = prevDate.map { expense.createdAt > $0 } ?? true
+            return afterPrev && beforeCurrent
+        }
+    }
 }

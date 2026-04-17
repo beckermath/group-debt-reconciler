@@ -2,16 +2,21 @@ import SwiftUI
 
 struct GroupDetailScreen: View {
     let groupId: String
+    @Environment(\.dismiss) private var dismiss
     @Environment(GroupStore.self) private var groupStore
     @Environment(AuthManager.self) private var authManager
     @State private var showingAddExpense = false
     @State private var showingEditGroup = false
     @State private var showingSettleUp = false
+    @State private var selectedExpense: Expense?
+    @State private var selectedSettlement: Settlement?
+    @State private var selectedMember: GroupMember?
     @State private var highlightedExpenseId: String?
     @State private var selectedPage: DetailPage = .activity
     @State private var hScrollPosition = ScrollPosition(id: DetailPage.activity, anchor: .center)
     @State private var showAllMembers = false
-    @State private var bannerTint: Color = Color(.systemBackground)
+    @State private var bannerTint: Color = Color.warmBackgroundTop
+    @State private var bannerTintIsDark = false
     @State private var bannerCollapsed = false
     @State private var currentScrollOffset: CGFloat = 0
     @State private var overscrollAmount: CGFloat = 0
@@ -76,8 +81,10 @@ struct GroupDetailScreen: View {
         Group {
             switch groupStore.detailState {
             case .idle, .loading:
-                ProgressView("Loading...")
+                ProgressView()
+                    .controlSize(.large)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(WarmGradientBackground().ignoresSafeArea())
             case .failed(let msg):
                 VStack(spacing: 12) {
                     Image(systemName: "wifi.exclamationmark")
@@ -103,8 +110,10 @@ struct GroupDetailScreen: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             case .loaded:
                 mainContent
+                    .transition(.opacity.animation(.easeIn(duration: 0.3)))
             }
         }
+        .animation(.easeInOut(duration: 0.3), value: groupStore.detailState.isLoaded)
         .task { await groupStore.loadGroupDetail(id: groupId) }
     }
 
@@ -143,8 +152,6 @@ struct GroupDetailScreen: View {
                         .id(DetailPage.activity)
                         .containerRelativeFrame(.horizontal)
                         pageScrollView(page: .balances, scrollPos: $balancesScrollPos) {
-                            summaryStrip
-                                .padding(.bottom, 12)
                             balancesContent
                         }
                         .id(DetailPage.balances)
@@ -189,6 +196,7 @@ struct GroupDetailScreen: View {
                     hScrollPosition.scrollTo(id: DetailPage.activity, anchor: .center)
                     try? await Task.sleep(for: .milliseconds(100))
                     isProgrammaticScroll = false
+                    selectedPage = .activity
                     initialLayoutDone = true
                 }
 
@@ -204,7 +212,7 @@ struct GroupDetailScreen: View {
                         VStack(spacing: 0) {
                             Rectangle().fill(.ultraThinMaterial)
                                 .frame(height: pillBarHeight + 12)
-                            LinearGradient(colors: [Color(.systemBackground).opacity(0.5), .clear],
+                            LinearGradient(colors: [Color.warmBackgroundBottom.opacity(0.5), .clear],
                                            startPoint: .top, endPoint: .bottom)
                                 .frame(height: 10)
                         }
@@ -213,28 +221,28 @@ struct GroupDetailScreen: View {
 
                     case .softTintBar:
                         let scrollProgress = bannerCollapsed ? 1.0 : min(1, currentScrollOffset / bannerSpacerHeight)
-                        let tintOpacity = 0.35 + scrollProgress * 0.25 // 0.35 at rest → 0.6 at nav bar
-                        let fade: CGFloat = 36
+                        let tintOpacity = 0.1 + scrollProgress * 0.1 // 0.1 at rest → 0.2 at nav bar
+                        let fade: CGFloat = 20
                         Canvas { context, size in
                             let w = size.width
                             let navEnd = contentTopY
                             let pillTop = contentTopY + pillY
-                            let pillH = pillBarHeight + 8
+                            let pillH = pillBarHeight + 2
                             let pillBot = pillTop + pillH
                             let gap = pillTop - navEnd
 
                             // 1. Nav solid (screen top → start of fade/bridge)
                             let navSolidEnd = gap > fade * 2 ? navEnd : navEnd // full solid to edge
                             context.fill(Path(CGRect(x: 0, y: 0, width: w, height: navSolidEnd)),
-                                         with: .color(bannerTint.opacity(0.6)))
+                                         with: .color(bannerTint.opacity(0.2)))
 
                             // 2. Bridge / fades between nav and capsule
-                            if gap > 35 {
+                            if gap > 20 {
                                 // Large gap: independent fades, banner visible between
                                 context.fill(
                                     Path(CGRect(x: 0, y: navEnd, width: w, height: fade)),
                                     with: .linearGradient(
-                                        Gradient(colors: [bannerTint.opacity(0.6), .clear]),
+                                        Gradient(colors: [bannerTint.opacity(0.2), .clear]),
                                         startPoint: CGPoint(x: 0, y: navEnd),
                                         endPoint: CGPoint(x: 0, y: navEnd + fade)))
                                 context.fill(
@@ -248,7 +256,7 @@ struct GroupDetailScreen: View {
                                 context.fill(
                                     Path(CGRect(x: 0, y: navEnd, width: w, height: gap)),
                                     with: .linearGradient(
-                                        Gradient(colors: [bannerTint.opacity(0.6), bannerTint.opacity(tintOpacity)]),
+                                        Gradient(colors: [bannerTint.opacity(0.2), bannerTint.opacity(tintOpacity)]),
                                         startPoint: CGPoint(x: 0, y: navEnd),
                                         endPoint: CGPoint(x: 0, y: pillTop)))
                             }
@@ -290,29 +298,57 @@ struct GroupDetailScreen: View {
         .navigationTitle(groupName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbarColorScheme(hasBanner && bannerTintIsDark ? .dark : .light, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showingEditGroup = true
-                } label: {
-                    Image(systemName: "pencil.circle")
+                Button { showingEditGroup = true } label: {
+                    Image(systemName: "pencil")
                 }
             }
         }
         .sheet(isPresented: $showingAddExpense) {
             AddExpenseScreen(groupId: groupId, memberList: detail?.members ?? [], currentUserId: authManager.currentUser?.id)
         }
-        .navigationDestination(isPresented: $showingEditGroup) {
-            EditGroupScreen(groupId: groupId)
-        }
-        .navigationDestination(isPresented: $showingSettleUp) {
+        .sheet(isPresented: $showingSettleUp) {
             SettleUpScreen(groupId: groupId, transfers: transfers)
+                .presentationDetents([.medium, .fraction(0.6)])
+                .presentationDragIndicator(.visible)
         }
-        .navigationDestination(for: Expense.self) { expense in
-            ExpenseDetailScreen(expense: expense, groupId: groupId)
+        .sheet(item: $selectedExpense) { expense in
+            ExpenseDetailScreen(expense: expense, groupId: groupId) {
+                highlightedExpenseId = expense.id
+                Task {
+                    try? await Task.sleep(for: .seconds(2))
+                    withAnimation { highlightedExpenseId = nil }
+                }
+            }
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
         }
-        .navigationDestination(for: Settlement.self) { settlement in
-            SettlementDetailScreen(settlement: settlement)
+        .sheet(item: $selectedSettlement) { settlement in
+            SettlementDetailScreen(
+                settlement: settlement,
+                groupId: groupId,
+                includedExpenses: detail?.expenses(for: settlement) ?? []
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(item: $selectedMember) { member in
+            MemberDetailSheet(
+                member: member,
+                balance: balances.first { $0.memberId == member.id },
+                expenses: expenses.filter { $0.paidByMemberId == member.id },
+                isCurrentUser: authManager.currentUser?.id == member.userId
+            )
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
+        }
+        .navigationDestination(isPresented: $showingEditGroup) {
+            EditGroupScreen(groupId: groupId) {
+                // Group was deleted — pop back to groups list
+                dismiss()
+            }
         }
         .onChange(of: showingAddExpense) { _, isShowing in
             if !isShowing {
@@ -337,7 +373,7 @@ struct GroupDetailScreen: View {
 
                 ZStack {
                     // Base: always visible underneath
-                    Color(.systemBackground)
+                    Color.warmBackgroundBottom
 
                     VStack(spacing: 0) {
                         if let urlString = detail?.bannerUrl, let url = URL(string: urlString) {
@@ -345,6 +381,12 @@ struct GroupDetailScreen: View {
                             ZStack {
                                 CachedBannerImage(url: url, height: bannerH) { color in
                                     bannerTint = color
+                                    // Compute luminance to decide light/dark text
+                                    let uiColor = UIColor(color)
+                                    var r: CGFloat = 0; var g: CGFloat = 0; var b: CGFloat = 0
+                                    uiColor.getRed(&r, green: &g, blue: &b, alpha: nil)
+                                    let luminance = 0.299 * r + 0.587 * g + 0.114 * b
+                                    bannerTintIsDark = luminance < 0.5
                                 }
                                 .frame(width: geo.size.width, height: bannerH)
                                 .clipped()
@@ -365,13 +407,13 @@ struct GroupDetailScreen: View {
                                 // extendedGradient starts earlier for more tint coverage at pill area
                                 LinearGradient(
                                     stops: tabBarStyle == .extendedGradient ? [
-                                        .init(color: .clear, location: 0.2),
-                                        .init(color: bannerTint.opacity(0.5), location: 0.45),
-                                        .init(color: bannerTint.opacity(0.85), location: 0.65),
-                                        .init(color: bannerTint, location: 0.8),
+                                        .init(color: .clear, location: 0.5),
+                                        .init(color: bannerTint.opacity(0.5), location: 0.7),
+                                        .init(color: bannerTint.opacity(0.85), location: 0.85),
+                                        .init(color: bannerTint, location: 1.0),
                                     ] : [
-                                        .init(color: .clear, location: 0.4),
-                                        .init(color: bannerTint.opacity(0.8), location: 0.7),
+                                        .init(color: .clear, location: 0.65),
+                                        .init(color: bannerTint.opacity(0.6), location: 0.85),
                                         .init(color: bannerTint, location: 1.0),
                                     ],
                                     startPoint: .top,
@@ -382,20 +424,24 @@ struct GroupDetailScreen: View {
                             .frame(height: bannerH)
                         }
 
-                        // Tint → systemBackground gradient (always present)
+                        // Tint → background gradient
                         LinearGradient(
-                            colors: [bannerTint, Color(.systemBackground)],
+                            stops: [
+                                .init(color: bannerTint, location: 0),
+                                .init(color: bannerTint.opacity(0.3), location: 0.4),
+                                .init(color: Color.warmBackgroundBottom, location: 1.0),
+                            ],
                             startPoint: .top,
                             endPoint: .bottom
                         )
-                        .frame(height: geo.size.height * 0.25)
+                        .frame(height: geo.size.height * 0.35)
 
-                        Color(.systemBackground)
+                        Color.warmBackgroundBottom
                     }
                 }
             }
         } else {
-            Color(.systemBackground)
+            WarmGradientBackground()
         }
     }
 
@@ -458,8 +504,12 @@ struct GroupDetailScreen: View {
         case materialStrip, extendedGradient, softTintBar
     }
 
+    private var navTextColor: Color {
+        hasBanner && bannerTintIsDark ? .white : .primary
+    }
+
     private var activePillColor: Color {
-        hasBanner ? .white : .primary
+        navTextColor
     }
 
     private var inactivePillColor: Color {
@@ -468,7 +518,7 @@ struct GroupDetailScreen: View {
         case .materialStrip:
             return Color.secondary.opacity(0.6)
         case .extendedGradient, .softTintBar:
-            return Color.white.opacity(0.7) // tint bg always present behind pills
+            return bannerTintIsDark ? Color.white.opacity(0.7) : Color.primary.opacity(0.4)
         }
     }
 
@@ -488,7 +538,7 @@ struct GroupDetailScreen: View {
                 } label: {
                     Text(page.title)
                         .font(.subheadline)
-                        .fontWeight(selectedPage == page ? .semibold : .medium)
+                        .fontWeight(selectedPage == page ? .semibold : .regular)
                         .foregroundStyle(selectedPage == page ? activePillColor : inactivePillColor)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 7)
@@ -618,7 +668,6 @@ struct GroupDetailScreen: View {
             .shadow(color: .black.opacity(0.05), radius: 6, y: 3)
         }
         .buttonStyle(.plain)
-        .disabled(isGroupSettled)
     }
 
     // MARK: - Members Page
@@ -628,24 +677,28 @@ struct GroupDetailScreen: View {
             if let members = detail?.members, !members.isEmpty {
                 VStack(spacing: 0) {
                     ForEach(Array(members.enumerated()), id: \.element.id) { index, member in
-                        HStack(spacing: 12) {
-                            MemberAvatar(name: member.name, imageUrl: member.imageUrl, size: 40)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(member.name)
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                if let userId = authManager.currentUser?.id, member.userId == userId {
-                                    Text("You")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                } else if member.userId == nil {
-                                    Text("Guest")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                        Button { selectedMember = member } label: {
+                            HStack(spacing: 12) {
+                                MemberAvatar(name: member.name, imageUrl: member.imageUrl, size: 40)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(member.name)
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                    if let userId = authManager.currentUser?.id, member.userId == userId {
+                                        Text("You")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    } else if member.userId == nil {
+                                        Text("Guest")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
                                 }
+                                Spacer()
                             }
-                            Spacer()
+                            .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
                         .padding(.vertical, 10)
                         .padding(.horizontal, 14)
 
@@ -656,6 +709,40 @@ struct GroupDetailScreen: View {
                 }
                 .background(.background, in: .rect(cornerRadius: 14))
                 .shadow(color: .black.opacity(0.05), radius: 6, y: 3)
+            }
+
+            // Removed members
+            if let removed = detail?.removedMembers, !removed.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("REMOVED")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
+                        .tracking(0.5)
+                        .padding(.horizontal, 4)
+
+                    VStack(spacing: 0) {
+                        ForEach(Array(removed.enumerated()), id: \.element.id) { index, member in
+                            HStack(spacing: 12) {
+                                MemberAvatar(name: member.name, imageUrl: member.imageUrl, size: 40)
+                                    .opacity(0.5)
+                                Text(member.name)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                            }
+                            .padding(.vertical, 10)
+                            .padding(.horizontal, 14)
+
+                            if index < removed.count - 1 {
+                                Divider().padding(.horizontal, 14)
+                            }
+                        }
+                    }
+                    .background(.background, in: .rect(cornerRadius: 14))
+                    .shadow(color: .black.opacity(0.05), radius: 6, y: 3)
+                }
             }
         }
     }
@@ -678,15 +765,26 @@ struct GroupDetailScreen: View {
 
     private var balancesContent: some View {
         VStack(spacing: 16) {
-            sectionLabel("BALANCES")
-                .padding(.bottom, -6)
-
-            VStack(spacing: 0) {
-                if activeBalances.isEmpty && !settledMembers.isEmpty {
-                    ForEach(settledMembers) { entry in
-                        balanceRow(entry)
-                    }
-                } else {
+            if isGroupSettled {
+                // Single unified settled card
+                VStack(spacing: 12) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 44))
+                        .foregroundStyle(Color.balancePositive)
+                    Text("All settled up")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                    Text("Everyone has a balance of $0.00")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 32)
+                .background(.background, in: .rect(cornerRadius: 14))
+                .shadow(color: .black.opacity(0.05), radius: 6, y: 3)
+            } else {
+                // Active balances
+                VStack(spacing: 0) {
                     ForEach(activeBalances) { entry in
                         balanceRow(entry)
                     }
@@ -718,72 +816,65 @@ struct GroupDetailScreen: View {
                         .buttonStyle(.plain)
                     }
                 }
-            }
-            .frame(maxWidth: .infinity)
-            .padding(16)
-            .background(.background, in: .rect(cornerRadius: 14))
-            .shadow(color: .black.opacity(0.05), radius: 6, y: 3)
-
-            if !transfers.isEmpty {
-                HStack {
-                    sectionLabel("\(transfers.count) PAYMENT\(transfers.count == 1 ? "" : "S") TO SETTLE")
-                    Spacer()
-                    Button {
-                        showingSettleUp = true
-                    } label: {
-                        Text("Settle Up")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Color.accentColor.opacity(0.12), in: .capsule)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.bottom, -6)
-
-                VStack(spacing: 0) {
-                    ForEach(transfers) { transfer in
-                        HStack(spacing: 8) {
-                            MemberAvatar(name: transfer.fromName, imageUrl: transfer.fromImageUrl, size: 24)
-                            Image(systemName: "arrow.right")
-                                .font(.caption2)
-                                .foregroundStyle(.quaternary)
-                            MemberAvatar(name: transfer.toName, imageUrl: transfer.toImageUrl, size: 24)
-                            Text("\(transfer.fromName) pays \(transfer.toName)")
-                                .font(.caption)
-                            Spacer()
-                            Text(formatCents(transfer.amount))
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background(Color.accentColor.opacity(0.1), in: .capsule)
-                        }
-                        .padding(.vertical, 10)
-                        .padding(.horizontal, 14)
-
-                        if transfer.id != transfers.last?.id {
-                            Divider().padding(.horizontal, 14)
-                        }
-                    }
-                }
+                .frame(maxWidth: .infinity)
+                .padding(16)
                 .background(.background, in: .rect(cornerRadius: 14))
                 .shadow(color: .black.opacity(0.05), radius: 6, y: 3)
-            } else if isGroupSettled {
-                VStack(spacing: 8) {
-                    Image(systemName: "checkmark.circle")
-                        .font(.system(size: 36))
-                        .foregroundStyle(Color.balancePositive.opacity(0.5))
-                    Text("No payments needed")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                    Text("Everyone is settled up")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+
+                // Settle up section
+                if !transfers.isEmpty {
+                    HStack {
+                        sectionLabel("SETTLE UP")
+                        Spacer()
+                        Button {
+                            showingSettleUp = true
+                        } label: {
+                            HStack(spacing: 5) {
+                                Text("Settle Up")
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+                                Image(systemName: "chevron.right")
+                                    .font(.caption2)
+                                    .fontWeight(.bold)
+                            }
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 7)
+                            .background(Color.brandSecondary, in: .capsule)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.bottom, -6)
+
+                    VStack(spacing: 0) {
+                        ForEach(Array(transfers.enumerated()), id: \.element.id) { index, transfer in
+                            HStack(spacing: 12) {
+                                MemberAvatar(name: transfer.fromName, imageUrl: transfer.fromImageUrl, size: 36)
+                                Image(systemName: "arrow.right")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                                MemberAvatar(name: transfer.toName, imageUrl: transfer.toImageUrl, size: 36)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("\(transfer.fromName) pays \(transfer.toName)")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Text(formatCents(transfer.amount))
+                                    .font(.subheadline)
+                                    .fontWeight(.bold)
+                            }
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 14)
+
+                            if index < transfers.count - 1 {
+                                Divider().padding(.horizontal, 14)
+                            }
+                        }
+                    }
+                    .background(.background, in: .rect(cornerRadius: 14))
+                    .shadow(color: .black.opacity(0.05), radius: 6, y: 3)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 32)
             }
         }
     }
@@ -860,16 +951,25 @@ struct GroupDetailScreen: View {
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(expenses.enumerated()), id: \.element.id) { index, expense in
-                        NavigationLink(value: expense) {
+                        let isFirst = index == 0
+                        let isLast = index == expenses.count - 1
+                        let isHighlighted = highlightedExpenseId == expense.id
+
+                        Button { selectedExpense = expense } label: {
                             ExpenseRow(expense: expense)
                         }
                         .buttonStyle(.plain)
                         .padding(.vertical, 10)
                         .padding(.horizontal, 14)
                         .background(
-                            highlightedExpenseId == expense.id
-                                ? Color.brandSecondary.opacity(0.15)
-                                : Color.clear
+                            RoundedRectangle(cornerRadius: 0)
+                                .fill(isHighlighted ? Color.balancePositive.opacity(0.1) : .clear)
+                                .clipShape(.rect(
+                                    topLeadingRadius: isFirst ? 14 : 0,
+                                    bottomLeadingRadius: isLast ? 14 : 0,
+                                    bottomTrailingRadius: isLast ? 14 : 0,
+                                    topTrailingRadius: isFirst ? 14 : 0
+                                ))
                         )
                         .animation(.easeOut(duration: 1.5), value: highlightedExpenseId)
 
@@ -890,7 +990,7 @@ struct GroupDetailScreen: View {
         VStack(spacing: 0) {
             let maxCents = settlements.map(\.totalCents).max() ?? 1
             ForEach(settlements) { settlement in
-                NavigationLink(value: settlement) {
+                Button { selectedSettlement = settlement } label: {
                     VStack(alignment: .leading, spacing: 5) {
                         HStack {
                             Text(settlement.settledAt, format: .dateTime.month(.abbreviated).day().year())
@@ -981,17 +1081,10 @@ private struct ExpenseRow: View {
 
             Spacer()
 
-            HStack(spacing: 6) {
-                Text(formatCents(expense.amount))
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .monospacedDigit()
-
-                Image(systemName: "chevron.right")
-                    .font(.caption2)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.tertiary)
-            }
+            Text(formatCents(expense.amount))
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .monospacedDigit()
         }
         .contentShape(Rectangle())
     }
@@ -1046,10 +1139,81 @@ struct CachedBannerImage: View {
     }
 }
 
-// MARK: - Average Color Extraction
+// MARK: - Vibrant Color Extraction
 
 private extension UIImage {
+    /// Extracts the most vibrant (highest saturation) color from the image
+    /// by sampling a grid of pixels and picking the one with the best saturation + brightness.
     var averageColor: UIColor? {
+        guard let cgImage = self.cgImage else { return nil }
+        let width = cgImage.width
+        let height = cgImage.height
+        guard width > 0, height > 0 else { return nil }
+
+        // Render into a bitmap we can sample
+        let bytesPerPixel = 4
+        let bytesPerRow = width * bytesPerPixel
+        var pixelData = [UInt8](repeating: 0, count: width * height * bytesPerPixel)
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let context = CGContext(
+            data: &pixelData,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: bytesPerRow,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
+        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+
+        // Sample a grid of pixels (skip edges, focus on center-ish area)
+        let sampleStep = max(1, min(width, height) / 20) // ~20x20 grid
+        var bestColor: (r: CGFloat, g: CGFloat, b: CGFloat) = (0.5, 0.5, 0.5)
+        var bestScore: CGFloat = -1
+
+        for y in stride(from: height / 6, to: height * 5 / 6, by: sampleStep) {
+            for x in stride(from: width / 6, to: width * 5 / 6, by: sampleStep) {
+                let offset = (y * width + x) * bytesPerPixel
+                let r = CGFloat(pixelData[offset]) / 255
+                let g = CGFloat(pixelData[offset + 1]) / 255
+                let b = CGFloat(pixelData[offset + 2]) / 255
+
+                // Convert to HSB to evaluate vibrancy
+                let maxC = max(r, g, b)
+                let minC = min(r, g, b)
+                let delta = maxC - minC
+                let saturation = maxC > 0 ? delta / maxC : 0
+                let brightness = maxC
+
+                // Score: prefer high saturation with reasonable brightness
+                // Ignore very dark or very light pixels
+                guard brightness > 0.15 && brightness < 0.9 else { continue }
+                let score = saturation * 2.0 + brightness * 0.5
+
+                if score > bestScore {
+                    bestScore = score
+                    bestColor = (r, g, b)
+                }
+            }
+        }
+
+        // If no vibrant color found (e.g., grayscale photo), fall back to average
+        if bestScore < 0.3 {
+            return fallbackAverageColor()
+        }
+
+        // Desaturate by 20% to tone it down
+        let gray: CGFloat = (bestColor.r + bestColor.g + bestColor.b) / 3
+        let mix: CGFloat = 0.2 // 20% toward gray
+        let r = bestColor.r + (gray - bestColor.r) * mix
+        let g = bestColor.g + (gray - bestColor.g) * mix
+        let b = bestColor.b + (gray - bestColor.b) * mix
+
+        return UIColor(red: r, green: g, blue: b, alpha: 1)
+    }
+
+    /// Fallback: CIAreaAverage for grayscale/low-saturation images
+    private func fallbackAverageColor() -> UIColor? {
         guard let ciImage = CIImage(image: self) else { return nil }
         let extent = ciImage.extent
         let inputExtent = CIVector(x: extent.origin.x, y: extent.origin.y,
@@ -1058,10 +1222,10 @@ private extension UIImage {
                                     parameters: [kCIInputImageKey: ciImage, kCIInputExtentKey: inputExtent]),
               let output = filter.outputImage else { return nil }
         var bitmap = [UInt8](repeating: 0, count: 4)
-        let context = CIContext(options: [.workingColorSpace: kCFNull as Any])
-        context.render(output, toBitmap: &bitmap, rowBytes: 4,
-                       bounds: CGRect(x: 0, y: 0, width: 1, height: 1),
-                       format: .RGBA8, colorSpace: nil)
+        let ctx = CIContext(options: [.workingColorSpace: kCFNull as Any])
+        ctx.render(output, toBitmap: &bitmap, rowBytes: 4,
+                   bounds: CGRect(x: 0, y: 0, width: 1, height: 1),
+                   format: .RGBA8, colorSpace: nil)
         return UIColor(red: CGFloat(bitmap[0]) / 255,
                        green: CGFloat(bitmap[1]) / 255,
                        blue: CGFloat(bitmap[2]) / 255,

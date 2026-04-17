@@ -7,6 +7,7 @@ struct ExpenseDetailsStep: View {
     @Binding var path: NavigationPath
     let onSubmit: () async -> Void
     var focusedField: FocusState<ExpenseField?>.Binding
+    var title: String = "Add Expense"
 
     var body: some View {
         ScrollView {
@@ -38,7 +39,8 @@ struct ExpenseDetailsStep: View {
             .padding(.bottom, 48)
         }
         .scrollDismissesKeyboard(.interactively)
-        .navigationTitle("Add Expense")
+        .background(WarmGradientBackground().ignoresSafeArea())
+        .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -50,12 +52,12 @@ struct ExpenseDetailsStep: View {
             VStack(spacing: 4) {
                 HStack(spacing: 1) {
                     Text("$")
-                        .font(.system(size: 40, weight: .bold, design: .rounded))
+                        .font(.system(size: 40, weight: .bold))
                         .foregroundStyle(model.amount.isEmpty ? .quaternary : .primary)
 
                     TextField("0.00", text: $model.amount)
                         .keyboardType(.decimalPad)
-                        .font(.system(size: 40, weight: .bold, design: .rounded))
+                        .font(.system(size: 40, weight: .bold))
                         .multilineTextAlignment(.leading)
                         .focused(focusedField, equals: .amount)
                 }

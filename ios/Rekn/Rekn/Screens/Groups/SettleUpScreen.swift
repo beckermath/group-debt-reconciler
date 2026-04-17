@@ -15,66 +15,97 @@ struct SettleUpScreen: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                if showSuccess {
-                    successView
-                } else {
-                    formContent
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    if showSuccess {
+                        successView
+                    } else {
+                        formContent
+                    }
+                }
+                .padding(16)
+            }
+            .background(WarmGradientBackground().ignoresSafeArea())
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    if !showSuccess {
+                        Button("Cancel") { dismiss() }
+                            .disabled(isSubmitting)
+                    }
                 }
             }
-            .padding()
+            .interactiveDismissDisabled(isSubmitting)
         }
-        .navigationTitle("Settle all debts?")
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(isSubmitting || showSuccess)
     }
 
     // MARK: - Form
 
     private var formContent: some View {
         VStack(spacing: 20) {
-            Text("This will mark all current debts as settled. New expenses will start with a clean slate.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-
-            // Summary header
-            HStack {
-                Text("\(transfers.count) payment\(transfers.count == 1 ? "" : "s") to settle")
+            // Header
+            VStack(spacing: 6) {
+                Text("Settle Up")
+                    .font(.title3)
+                    .fontWeight(.bold)
+                Text("Review transfers to settle all balances")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                Spacer()
-                Text("\(formatCents(totalCents)) total")
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
             }
+            .frame(maxWidth: .infinity)
 
-            // Transfer list
-            VStack(spacing: 8) {
-                ForEach(transfers) { transfer in
-                    HStack {
+            // Transfer list card
+            VStack(spacing: 0) {
+                ForEach(Array(transfers.enumerated()), id: \.element.id) { index, transfer in
+                    HStack(spacing: 12) {
                         MemberAvatar(name: transfer.fromName, imageUrl: transfer.fromImageUrl, size: 28)
                         Image(systemName: "arrow.right")
                             .font(.caption)
-                            .foregroundStyle(.quaternary)
+                            .foregroundStyle(.secondary)
                         MemberAvatar(name: transfer.toName, imageUrl: transfer.toImageUrl, size: 28)
-                        VStack(alignment: .leading) {
-                            Text("\(transfer.fromName) pays \(transfer.toName)")
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("\(transfer.fromName) pays")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text(transfer.toName)
                                 .font(.subheadline)
+                                .fontWeight(.medium)
                         }
                         Spacer()
                         Text(formatCents(transfer.amount))
                             .font(.subheadline)
                             .fontWeight(.semibold)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(Color.accentColor.opacity(0.1), in: .capsule)
+                            .foregroundStyle(Color.brandPrimary)
                     }
-                    .padding(12)
-                    .background(Color(.systemGray6), in: .rect(cornerRadius: 10))
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 16)
+
+                    if index < transfers.count - 1 {
+                        Divider().padding(.horizontal, 16)
+                    }
                 }
+
+                // Total row
+                Rectangle()
+                    .fill(Color.secondary.opacity(0.2))
+                    .frame(height: 1)
+                    .padding(.horizontal, 16)
+
+                HStack {
+                    Text("Total")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    Spacer()
+                    Text(formatCents(totalCents))
+                        .font(.subheadline)
+                        .fontWeight(.bold)
+                        .foregroundStyle(Color.brandPrimary)
+                }
+                .padding(.vertical, 12)
+                .padding(.horizontal, 16)
             }
+            .background(.background, in: .rect(cornerRadius: 14))
+            .shadow(color: .black.opacity(0.05), radius: 4, y: 2)
 
             if let error {
                 Text(error)
@@ -86,17 +117,20 @@ struct SettleUpScreen: View {
             Button {
                 showConfirmation = true
             } label: {
-                if isSubmitting {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                } else {
-                    Text("Confirm settlement")
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity)
+                HStack(spacing: 8) {
+                    if isSubmitting {
+                        Image(systemName: "arrow.trianglehead.clockwise")
+                            .symbolEffect(.rotate, isActive: isSubmitting)
+                    }
+                    Text(isSubmitting ? "Settling..." : "Confirm Settlement")
                 }
+                .font(.body)
+                .fontWeight(.semibold)
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+            .background(Color.brandPrimary, in: .rect(cornerRadius: 12))
             .disabled(isSubmitting)
             .confirmationDialog(
                 "Settle all debts?",
@@ -119,26 +153,22 @@ struct SettleUpScreen: View {
         VStack(spacing: 16) {
             Spacer()
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 56))
+                .font(.system(size: 48))
                 .foregroundStyle(Color.balancePositive)
+                .symbolEffect(.bounce, value: showSuccess)
             Text("All settled up!")
                 .font(.headline)
             Text("No payments needed right now.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             Spacer()
-            Button {
-                dismiss()
-            } label: {
-                Text("Done")
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .padding(.horizontal)
         }
-        .frame(maxWidth: .infinity, minHeight: 300)
+        .frame(maxWidth: .infinity, minHeight: 200)
+        .sensoryFeedback(.success, trigger: showSuccess)
+        .task {
+            try? await Task.sleep(for: .seconds(1.5))
+            dismiss()
+        }
     }
 
     // MARK: - Submit
@@ -164,8 +194,11 @@ struct SettleUpScreen: View {
 }
 
 #Preview {
-    NavigationStack {
-        SettleUpScreen(groupId: "test", transfers: Transfer.previews)
-            .environment(GroupStore())
-    }
+    Text("Preview")
+        .sheet(isPresented: .constant(true)) {
+            SettleUpScreen(groupId: "test", transfers: Transfer.previews)
+                .environment(GroupStore())
+                .presentationDetents([.medium, .fraction(0.6)])
+                .presentationDragIndicator(.visible)
+        }
 }

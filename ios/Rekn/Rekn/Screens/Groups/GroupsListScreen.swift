@@ -34,6 +34,10 @@ struct GroupsListScreen: View {
 
     private var netBalance: Int { totalOwed - totalOwes }
 
+    private var hasBalanceToShow: Bool {
+        totalOwed > 0 || totalOwes > 0
+    }
+
     var body: some View {
         Group {
             switch groupStore.groupsState {
@@ -85,12 +89,10 @@ struct GroupsListScreen: View {
                     MemberAvatar(
                         name: authManager.currentUser?.name ?? "?",
                         imageUrl: authManager.currentUser?.imageUrl,
-                        size: 30
-                    )
-                    .overlay(
-                        Circle().stroke(.white.opacity(0.35), lineWidth: 1)
+                        size: 32
                     )
                 }
+                .buttonStyle(.plain)
                 .accessibilityLabel("Settings")
             }
             ToolbarItem(placement: .principal) {
@@ -224,7 +226,7 @@ struct GroupsListScreen: View {
                 .padding(.bottom, 24)
                 .animation(.snappy(duration: 0.25), value: pendingInvites.map(\.id))
             }
-            .contentMargins(.top, 80, for: .scrollContent)
+            .contentMargins(.top, hasBalanceToShow ? 80 : 12, for: .scrollContent)
             .scrollIndicators(.hidden)
             .tint(.white)
             .onScrollGeometryChange(for: CGFloat.self) { geo in
@@ -251,7 +253,7 @@ struct GroupsListScreen: View {
             .allowsHitTesting(false)
 
             // 4. Balance pinned on the foreground teal
-            if totalOwed > 0 || totalOwes > 0 {
+            if hasBalanceToShow {
                 balanceHeader
                     .padding(.horizontal, 16)
                     .padding(.top, 10)

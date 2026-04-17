@@ -79,8 +79,34 @@ struct GroupsListScreen: View {
             }
         }
         .animation(.easeInOut(duration: 0.3), value: groupStore.groupsState.isLoaded)
-        .toolbar(.hidden, for: .navigationBar)
-        .safeAreaInset(edge: .top, spacing: 0) { customHeader }
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                NavProfileAvatar(
+                    name: authManager.currentUser?.name ?? "?",
+                    imageUrl: authManager.currentUser?.imageUrl
+                )
+                .contentShape(Circle())
+                .onTapGesture { showingSettings = true }
+                .accessibilityAddTraits(.isButton)
+                .accessibilityLabel("Settings")
+            }
+            ToolbarItem(placement: .principal) {
+                Text("Your Groups")
+                    .font(.headline)
+                    .fontWeight(.bold)
+                    .foregroundStyle(.white)
+            }
+            ToolbarItem(placement: .primaryAction) {
+                Button { showingCreateGroup = true } label: {
+                    Image(systemName: "plus")
+                        .foregroundStyle(.white)
+                }
+            }
+        }
         .navigationDestination(for: String.self) { groupId in
             GroupDetailScreen(groupId: groupId)
         }
@@ -236,47 +262,6 @@ struct GroupsListScreen: View {
                     .allowsHitTesting(false)
             }
         }
-    }
-
-    // MARK: - Custom Nav Header
-    //
-    // Built instead of the system toolbar so iOS 26's glass chrome doesn't
-    // wrap the profile avatar. Lives in a safeAreaInset so the teal backdrop
-    // extends behind it.
-
-    private var customHeader: some View {
-        HStack(spacing: 12) {
-            NavProfileAvatar(
-                name: authManager.currentUser?.name ?? "?",
-                imageUrl: authManager.currentUser?.imageUrl
-            )
-            .contentShape(Circle())
-            .onTapGesture { showingSettings = true }
-            .accessibilityAddTraits(.isButton)
-            .accessibilityLabel("Settings")
-
-            Spacer()
-
-            Text("Your Groups")
-                .font(.headline)
-                .fontWeight(.bold)
-                .foregroundStyle(.white)
-
-            Spacer()
-
-            Button { showingCreateGroup = true } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 32, height: 32)
-            }
-            .buttonStyle(.plain)
-            .contentShape(Circle())
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 6)
-        .padding(.bottom, 10)
-        .background(Color.brandPrimary)
     }
 
     // MARK: - Compact Header

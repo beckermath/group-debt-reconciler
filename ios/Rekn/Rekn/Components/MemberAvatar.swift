@@ -116,54 +116,21 @@ struct CachedAvatarImage: View {
 
 // MARK: - Avatar Cache
 
-/// Two-tier avatar image cache: in-memory (NSCache) backed by disk so
-/// images survive app restarts. Disk reads happen synchronously on first
-/// access for a URL, then populate the memory cache.
+/// Simple in-memory image cache for avatar URLs.
 final class AvatarCache: @unchecked Sendable {
     static let shared = AvatarCache()
     private let cache = NSCache<NSURL, UIImage>()
-    private let diskQueue = DispatchQueue(label: "AvatarCache.disk", qos: .utility)
-    private let diskDirectory: URL
 
     private init() {
-        cache.countLimit = 200
-        let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
-        diskDirectory = caches.appendingPathComponent("AvatarCache", isDirectory: true)
-        try? FileManager.default.createDirectory(at: diskDirectory, withIntermediateDirectories: true)
+        cache.countLimit = 100
     }
 
     func get(_ url: URL) -> UIImage? {
-        // Memory first.
-        if let img = cache.object(forKey: url as NSURL) { return img }
-        // Disk fallback (synchronous). Small files — acceptable on init paths.
-        let path = diskPath(for: url)
-        guard let data = try? Data(contentsOf: path), let img = UIImage(data: data) else {
-            return nil
-        }
-        cache.setObject(img, forKey: url as NSURL)
-        return img
+        cache.object(forKey: url as NSURL)
     }
 
     func set(_ url: URL, image: UIImage) {
         cache.setObject(image, forKey: url as NSURL)
-        // Persist to disk off the main thread.
-        diskQueue.async { [diskDirectory] in
-            guard let data = image.jpegData(compressionQuality: 0.85) else { return }
-            let path = diskDirectory.appendingPathComponent(Self.safeFilename(for: url))
-            try? data.write(to: path)
-        }
-    }
-
-    private func diskPath(for url: URL) -> URL {
-        diskDirectory.appendingPathComponent(Self.safeFilename(for: url))
-    }
-
-    private static func safeFilename(for url: URL) -> String {
-        // Hash the absolute string so query-variant URLs collide predictably
-        // and filenames stay short.
-        var hasher = Hasher()
-        hasher.combine(url.absoluteString)
-        return "\(hasher.finalize()).jpg"
     }
 }
 

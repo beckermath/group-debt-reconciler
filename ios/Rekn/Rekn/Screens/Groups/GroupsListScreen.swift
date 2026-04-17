@@ -4,13 +4,24 @@ struct GroupsListScreen: View {
     @Binding var path: NavigationPath
     @Environment(GroupStore.self) private var groupStore
     @Environment(AuthManager.self) private var authManager
+    @Environment(InviteStore.self) private var inviteStore
     @State private var showingCreateGroup = false
     @State private var showingSettings = false
     @State private var scrollOffset: CGFloat = 0
+    @State private var inviteError: String?
 
     private var groups: [GroupSummary] {
         if case .loaded(let g) = groupStore.groupsState { return g }
         return []
+    }
+
+    private var pendingInvites: [PendingInvite] {
+        if case .loaded(let invites) = inviteStore.pendingState { return invites }
+        return []
+    }
+
+    private var showInvitesForCurrentUser: Bool {
+        !(authManager.currentUser?.isGuest ?? true)
     }
 
     private var totalOwed: Int {
@@ -22,6 +33,10 @@ struct GroupsListScreen: View {
     }
 
     private var netBalance: Int { totalOwed - totalOwes }
+
+    private var hasBalanceToShow: Bool {
+        totalOwed > 0 || totalOwes > 0
+    }
 
     var body: some View {
         Group {
@@ -70,10 +85,14 @@ struct GroupsListScreen: View {
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button { showingSettings = true } label: {
-                    Image(systemName: "gearshape")
-                        .foregroundStyle(.white)
-                }
+                NavProfileAvatar(
+                    name: authManager.currentUser?.name ?? "?",
+                    imageUrl: authManager.currentUser?.imageUrl
+                )
+                .contentShape(Circle())
+                .onTapGesture { showingSettings = true }
+                .accessibilityAddTraits(.isButton)
+                .accessibilityLabel("Settings")
             }
             ToolbarItem(placement: .principal) {
                 Text("Your Groups")
@@ -106,10 +125,55 @@ struct GroupsListScreen: View {
                 .presentationDragIndicator(.visible)
         }
         .task {
-            await groupStore.loadGroups()
+            async let groupsTask: () = groupStore.loadGroups()
+            async let invitesTask: () = showInvitesForCurrentUser
+                ? inviteStore.loadPending()
+                : ()
+            _ = await (groupsTask, invitesTask)
         }
         .refreshable {
-            await groupStore.loadGroups(forceReload: true)
+            async let groupsTask: () = groupStore.loadGroups(forceReload: true)
+            async let invitesTask: () = showInvitesForCurrentUser
+                ? inviteStore.loadPending(forceReload: true)
+                : ()
+            _ = await (groupsTask, invitesTask)
+        }
+        .alert("Couldn't update invite", isPresented: .constant(inviteError != nil)) {
+            Button("OK") { inviteError = nil }
+        } message: {
+            Text(inviteError ?? "")
+        }
+    }
+
+    // MARK: - Invite Actions
+
+    private func handleAccept(_ invite: PendingInvite) {
+        // Guard against double-tap while in flight.
+        guard !inviteStore.isProcessing(inviteId: invite.id) else { return }
+        Task {
+            do {
+                _ = try await inviteStore.accept(inviteId: invite.id)
+                // InviteStore.accept already reloaded pending invites from
+                // the server — refresh groups so the newly joined group shows.
+                await groupStore.loadGroups(forceReload: true)
+            } catch let error as APIError {
+                inviteError = error.errorDescription ?? "Couldn't accept invite"
+            } catch {
+                inviteError = "Couldn't accept invite"
+            }
+        }
+    }
+
+    private func handleDecline(_ invite: PendingInvite) {
+        guard !inviteStore.isProcessing(inviteId: invite.id) else { return }
+        Task {
+            do {
+                try await inviteStore.decline(inviteId: invite.id)
+            } catch let error as APIError {
+                inviteError = error.errorDescription ?? "Couldn't decline invite"
+            } catch {
+                inviteError = "Couldn't decline invite"
+            }
         }
     }
 
@@ -132,6 +196,24 @@ struct GroupsListScreen: View {
             // 2. ScrollView — cards scroll over the backdrop
             ScrollView {
                 VStack(spacing: 12) {
+                    if showInvitesForCurrentUser, !pendingInvites.isEmpty {
+                        VStack(spacing: 10) {
+                            PendingInvitesSectionHeader(count: pendingInvites.count)
+                                .padding(.horizontal, -16) // header uses its own 16pt inset
+                            ForEach(pendingInvites) { invite in
+                                PendingInviteCard(
+                                    invite: invite,
+                                    isProcessing: inviteStore.isProcessing(inviteId: invite.id),
+                                    onAccept: { handleAccept(invite) },
+                                    onDecline: { handleDecline(invite) }
+                                )
+                                .transition(.asymmetric(
+                                    insertion: .opacity.combined(with: .move(edge: .top)),
+                                    removal: .opacity.combined(with: .scale(scale: 0.98))
+                                ))
+                            }
+                        }
+                    }
                     ForEach(groups) { group in
                         NavigationLink(value: group.id) {
                             GroupCard(group: group)
@@ -141,8 +223,9 @@ struct GroupsListScreen: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
+                .animation(.snappy(duration: 0.25), value: pendingInvites.map(\.id))
             }
-            .contentMargins(.top, 80, for: .scrollContent)
+            .contentMargins(.top, hasBalanceToShow ? 80 : 12, for: .scrollContent)
             .scrollIndicators(.hidden)
             .tint(.white)
             .onScrollGeometryChange(for: CGFloat.self) { geo in
@@ -151,10 +234,12 @@ struct GroupsListScreen: View {
                 scrollOffset = max(0, offset)
             }
 
-            // 3. Foreground teal — slightly transparent so content is faintly visible
+            // 3. Foreground teal — slightly transparent so content is faintly visible.
+            // Shorter when there's no balance (covers just the nav bar region) so cards
+            // don't start hidden beneath a large overlay.
             VStack(spacing: 0) {
                 Color.brandPrimary.opacity(0.92)
-                    .frame(height: 180)
+                    .frame(height: hasBalanceToShow ? 180 : 100)
                 // Fade grows as user scrolls
                 let fadeAmount = min(40, scrollOffset * 0.8)
                 if fadeAmount > 0 {
@@ -169,7 +254,7 @@ struct GroupsListScreen: View {
             .allowsHitTesting(false)
 
             // 4. Balance pinned on the foreground teal
-            if totalOwed > 0 || totalOwes > 0 {
+            if hasBalanceToShow {
                 balanceHeader
                     .padding(.horizontal, 16)
                     .padding(.top, 10)
@@ -326,6 +411,53 @@ private struct GroupCard: View {
     }
 }
 
+// MARK: - Nav Profile Avatar
+
+/// Tight 32pt profile avatar for the nav bar. Unlike the shared `MemberAvatar`
+/// it doesn't reserve extra space for a selection ring, so it sits flush.
+private struct NavProfileAvatar: View {
+    let name: String
+    let imageUrl: String?
+    var size: CGFloat = 32
+
+    private var initial: String {
+        String(name.first.map(String.init) ?? "?").uppercased()
+    }
+
+    private var gradientPair: (Color, Color) {
+        // Deterministic gradient from the name (same style as MemberAvatar).
+        let pairs: [(Color, Color)] = [
+            (Color(red: 0.36, green: 0.13, blue: 0.73), Color(red: 0.34, green: 0.16, blue: 0.86)),
+            (Color(red: 0.25, green: 0.56, blue: 0.82), Color(red: 0.21, green: 0.36, blue: 0.85)),
+            (Color(red: 0.32, green: 0.65, blue: 0.42), Color(red: 0.25, green: 0.52, blue: 0.62)),
+            (Color(red: 0.72, green: 0.35, blue: 0.15), Color(red: 0.58, green: 0.16, blue: 0.68)),
+            (Color(red: 0.36, green: 0.13, blue: 0.93), Color(red: 0.28, green: 0.16, blue: 1.0)),
+            (Color(red: 0.45, green: 0.65, blue: 0.18), Color(red: 0.25, green: 0.52, blue: 0.42)),
+            (Color(red: 0.72, green: 0.13, blue: 0.58), Color(red: 0.58, green: 0.16, blue: 0.68)),
+            (Color(red: 0.25, green: 0.62, blue: 0.55), Color(red: 0.21, green: 0.42, blue: 0.75)),
+        ]
+        return pairs[abs(name.hashValue) % pairs.count]
+    }
+
+    var body: some View {
+        let (from, to) = gradientPair
+        ZStack {
+            Circle()
+                .fill(LinearGradient(colors: [from, to], startPoint: .topLeading, endPoint: .bottomTrailing))
+            Text(initial)
+                .font(.system(size: size * 0.4, weight: .semibold))
+                .foregroundStyle(.white)
+
+            if let imageUrl, !imageUrl.isEmpty, let url = URL(string: imageUrl) {
+                // Reuse the shared AvatarCache so the nav avatar stays in sync
+                // with every other avatar for the same user.
+                CachedAvatarImage(url: url, size: size)
+            }
+        }
+        .frame(width: size, height: size)
+    }
+}
+
 // MARK: - Card Press Style
 
 struct CardPressStyle: ButtonStyle {
@@ -343,5 +475,6 @@ struct CardPressStyle: ButtonStyle {
         GroupsListScreen(path: $path)
             .environment(GroupStore())
             .environment(AuthManager())
+            .environment(InviteStore())
     }
 }

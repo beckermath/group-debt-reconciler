@@ -8,6 +8,7 @@ struct GroupDetailScreen: View {
     @State private var showingAddExpense = false
     @State private var showingEditGroup = false
     @State private var showingSettleUp = false
+    @State private var showingInviteComposer = false
     @State private var selectedExpense: Expense?
     @State private var selectedSettlement: Settlement?
     @State private var selectedMember: GroupMember?
@@ -308,6 +309,11 @@ struct GroupDetailScreen: View {
         }
         .sheet(isPresented: $showingAddExpense) {
             AddExpenseScreen(groupId: groupId, memberList: detail?.members ?? [], currentUserId: authManager.currentUser?.id)
+        }
+        .sheet(isPresented: $showingInviteComposer) {
+            InviteComposerSheet(groupId: groupId, groupName: groupName)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showingSettleUp) {
             SettleUpScreen(groupId: groupId, transfers: transfers)
@@ -676,6 +682,33 @@ struct GroupDetailScreen: View {
         VStack(spacing: 16) {
             if let members = detail?.members, !members.isEmpty {
                 VStack(spacing: 0) {
+                    Button { showingInviteComposer = true } label: {
+                        HStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.brandSecondary.opacity(0.15))
+                                    .frame(width: 40, height: 40)
+                                Image(systemName: "person.badge.plus")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundStyle(Color.brandSecondary)
+                            }
+                            Text("Invite by phone")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.vertical, 10)
+                    .padding(.horizontal, 14)
+
+                    Divider().padding(.horizontal, 14)
+
                     ForEach(Array(members.enumerated()), id: \.element.id) { index, member in
                         Button { selectedMember = member } label: {
                             HStack(spacing: 12) {

@@ -89,6 +89,38 @@ struct APITransfer: Decodable {
     let amount: Int
 }
 
+// MARK: - Pending Invite (from GET /user/pending-invites)
+
+struct APIPendingInvite: Decodable, Identifiable {
+    let id: String
+    let groupId: String
+    let groupName: String
+    let inviterName: String
+    let createdAt: String
+
+    func toViewModel() -> PendingInvite {
+        PendingInvite(
+            id: id,
+            groupId: groupId,
+            groupName: groupName,
+            inviterName: inviterName,
+            createdAt: parseDate(createdAt) ?? Date()
+        )
+    }
+}
+
+// MARK: - User Search Result (from GET /users/search)
+
+struct APIUserSearchResult: Decodable, Identifiable {
+    let id: String
+    let name: String
+    let maskedPhone: String
+
+    func toViewModel() -> UserSearchResult {
+        UserSearchResult(id: id, name: name, maskedPhone: maskedPhone)
+    }
+}
+
 // MARK: - Date Parsing Helper
 
 private func parseDate(_ dateString: String?) -> Date? {

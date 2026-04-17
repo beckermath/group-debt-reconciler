@@ -18,6 +18,7 @@
 		1E0F4FD045E19689B0FFCDE2 /* AddExpenseScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FB25EBD3BB613AB5BA27135 /* AddExpenseScreen.swift */; };
 		20D129BBDCBFFF8EF618A03A /* SplitMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6701CDD545949367EB411DEB /* SplitMode.swift */; };
 		2E7BDDFF9BAF08C52FB09DF2 /* APIConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BB790B696CA71D5136E9F98 /* APIConfiguration.swift */; };
+		30789B9A1560FA8F348E7D2A /* InviteStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8B9F07453C46F72812AC8EF /* InviteStore.swift */; };
 		37915BDFA4DD57C5818E6006 /* AuthEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B8A83344D05376026C8052A /* AuthEndpoint.swift */; };
 		3C489EFA99DE54FAC73E6861 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 165CD276EE42B973B3ED9FD3 /* Assets.xcassets */; };
 		3E78B2D920F20163824C591E /* ReknTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4D294F3197F94BFB38912F /* ReknTests.swift */; };
@@ -28,7 +29,10 @@
 		54D4E0E9D6CCFAB82D92A5BE /* ExpenseDetailScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57F511D24CCDE523902E2CC6 /* ExpenseDetailScreen.swift */; };
 		58D6CFBDC7F073B90ADB6A92 /* NameSetupScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E1BCD6006CD47458DB2AFC4 /* NameSetupScreen.swift */; };
 		5B0537AB9A0C1FC44208670A /* SettlementDetailScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F14B3A1C1F4343CC25DEA84B /* SettlementDetailScreen.swift */; };
+		64EA807D2EC8A03A2D5CC439 /* DevEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF987FAE9E1E750E79B8EBB3 /* DevEndpoint.swift */; };
 		655DEC9A081D3ADBD52E21DB /* APIResponse.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DF84AF30C4EC5524A3B2366 /* APIResponse.swift */; };
+		67605AC8AA1F6B12F40B87CE /* InviteComposerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFB58D0EC38CFEA976C6F190 /* InviteComposerSheet.swift */; };
+		6799E37CA1CF3D992E193293 /* DevUserSwitcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56ECE053A1FF27F54B0ED9D6 /* DevUserSwitcher.swift */; };
 		698B1B87B2B4A4047ECF4791 /* ExpensesEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80989602318F14FFFC5596F4 /* ExpensesEndpoint.swift */; };
 		6ACD1D60F43E32A0D366063D /* MemberPickerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80EA6ECB5A62C056572091C0 /* MemberPickerScreen.swift */; };
 		6FE8858A643955BCC71E7EF5 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3480270B90B2B05DA1773214 /* KeychainService.swift */; };
@@ -51,6 +55,7 @@
 		CA16739B37885481709B16CD /* Group.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399BE6DC2C97920BFD87768 /* Group.swift */; };
 		CBF0197E85FDF3A9A23BF3CD /* MembersEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = D572E146AF1DC5F5E0AB752B /* MembersEndpoint.swift */; };
 		CD397FF935C2E2CEEB483E25 /* ReknTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E480F30AD205E49E9CD306A /* ReknTextField.swift */; };
+		CDA8A0C9561E2C784EC20612 /* PendingInvitesCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 657409A7229D794E9DE5CAD3 /* PendingInvitesCard.swift */; };
 		D08E9E06A7F2BC9A2DA71E4B /* GroupDetailScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBF0F9E39662C552CB14AF8B /* GroupDetailScreen.swift */; };
 		D0F7C810066532C07105FC1E /* CreateGroupSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C16EBB746104F2077F3C918 /* CreateGroupSheet.swift */; };
 		DADD8C2F8DAE5A053B804A83 /* ReknUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B8D1E6BCCC4B6CB7F4294C7 /* ReknUITests.swift */; };
@@ -61,6 +66,8 @@
 		F724039B565BD143D394ADAB /* APIError.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2BAD04536C0C454C0CFD085 /* APIError.swift */; };
 		F7747832AF193BAE8B7360DE /* GroupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F56BC4458F2D1066E7AA867 /* GroupStore.swift */; };
 		FA3AB0C7FECD67110094F494 /* CreateGroupDetailsStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 236163F7C7ED7DEEB851D9C8 /* CreateGroupDetailsStep.swift */; };
+		FCB6AF828621C569AAD5E230 /* PendingInvite.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC2CDDC72E0CA40C38EA82EE /* PendingInvite.swift */; };
+		FD4478457588EC936A9EA5D2 /* DevUserStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8B4133B7C5F59DF63EB98FF /* DevUserStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -99,11 +106,13 @@
 		4BB790B696CA71D5136E9F98 /* APIConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIConfiguration.swift; sourceTree = "<group>"; };
 		4E2294847314AD00F6C1A794 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		4E8CF511A56D2292A717F5F2 /* APIModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIModels.swift; sourceTree = "<group>"; };
+		56ECE053A1FF27F54B0ED9D6 /* DevUserSwitcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevUserSwitcher.swift; sourceTree = "<group>"; };
 		57F511D24CCDE523902E2CC6 /* ExpenseDetailScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseDetailScreen.swift; sourceTree = "<group>"; };
 		5B8A83344D05376026C8052A /* AuthEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthEndpoint.swift; sourceTree = "<group>"; };
 		5E1BCD6006CD47458DB2AFC4 /* NameSetupScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NameSetupScreen.swift; sourceTree = "<group>"; };
 		61A282A2E00BB24A6B168D5D /* SplitConfigStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplitConfigStep.swift; sourceTree = "<group>"; };
 		62957CEED4BC98D2192F6727 /* InvitesEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvitesEndpoint.swift; sourceTree = "<group>"; };
+		657409A7229D794E9DE5CAD3 /* PendingInvitesCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingInvitesCard.swift; sourceTree = "<group>"; };
 		6701CDD545949367EB411DEB /* SplitMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplitMode.swift; sourceTree = "<group>"; };
 		6ADE5A9881FEA1A1A6A12A50 /* ExpenseDetailsStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseDetailsStep.swift; sourceTree = "<group>"; };
 		6E480F30AD205E49E9CD306A /* ReknTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReknTextField.swift; sourceTree = "<group>"; };
@@ -121,13 +130,17 @@
 		8C16EBB746104F2077F3C918 /* CreateGroupSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateGroupSheet.swift; sourceTree = "<group>"; };
 		8DF84AF30C4EC5524A3B2366 /* APIResponse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIResponse.swift; sourceTree = "<group>"; };
 		9B8D1E6BCCC4B6CB7F4294C7 /* ReknUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReknUITests.swift; sourceTree = "<group>"; };
+		AF987FAE9E1E750E79B8EBB3 /* DevEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevEndpoint.swift; sourceTree = "<group>"; };
 		B81B7F5F8FF42DFEFD33E4A3 /* GroupNameScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupNameScreen.swift; sourceTree = "<group>"; };
+		B8B4133B7C5F59DF63EB98FF /* DevUserStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevUserStore.swift; sourceTree = "<group>"; };
+		BFB58D0EC38CFEA976C6F190 /* InviteComposerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteComposerSheet.swift; sourceTree = "<group>"; };
 		C7AA6C157FFD8C54F3DD504F /* SectionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionCard.swift; sourceTree = "<group>"; };
 		CA00F01C57BD51A1ECA9297F /* GloopyLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GloopyLoader.swift; sourceTree = "<group>"; };
 		CBF0F9E39662C552CB14AF8B /* GroupDetailScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupDetailScreen.swift; sourceTree = "<group>"; };
 		CF159A0829AB1E24FA1CF145 /* GroupsListScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupsListScreen.swift; sourceTree = "<group>"; };
 		D2BAD04536C0C454C0CFD085 /* APIError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIError.swift; sourceTree = "<group>"; };
 		D572E146AF1DC5F5E0AB752B /* MembersEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MembersEndpoint.swift; sourceTree = "<group>"; };
+		DC2CDDC72E0CA40C38EA82EE /* PendingInvite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingInvite.swift; sourceTree = "<group>"; };
 		DC96E5E448EDC95E1C039A3A /* SplitModeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplitModeScreen.swift; sourceTree = "<group>"; };
 		DE9D2A4B24A695ADA0E5AA2A /* GroupsEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupsEndpoint.swift; sourceTree = "<group>"; };
 		DF60798B92919ECD9D2D7425 /* EditGroupScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditGroupScreen.swift; sourceTree = "<group>"; };
@@ -138,6 +151,7 @@
 		E8DD70A00AF03E72E27509D9 /* Rekn.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Rekn.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E931A3855F6AB42BC2015C21 /* ReknUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = ReknUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F14B3A1C1F4343CC25DEA84B /* SettlementDetailScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettlementDetailScreen.swift; sourceTree = "<group>"; };
+		F8B9F07453C46F72812AC8EF /* InviteStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteStore.swift; sourceTree = "<group>"; };
 		FC472A3E2C3C7894E0D62BB7 /* CreateGroupModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateGroupModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -184,9 +198,11 @@
 				CBF0F9E39662C552CB14AF8B /* GroupDetailScreen.swift */,
 				B81B7F5F8FF42DFEFD33E4A3 /* GroupNameScreen.swift */,
 				CF159A0829AB1E24FA1CF145 /* GroupsListScreen.swift */,
+				BFB58D0EC38CFEA976C6F190 /* InviteComposerSheet.swift */,
 				80EA6ECB5A62C056572091C0 /* MemberPickerScreen.swift */,
 				85214216E82C9ED258B4C19F /* MembersSheet.swift */,
 				314889D9BFDB4C6340716E80 /* PayerSelectionScreen.swift */,
+				657409A7229D794E9DE5CAD3 /* PendingInvitesCard.swift */,
 				E008933CFBA3B4AE33D13A2B /* ReviewExpenseStep.swift */,
 				F14B3A1C1F4343CC25DEA84B /* SettlementDetailScreen.swift */,
 				356D8A76009E31609521B813 /* SettleUpScreen.swift */,
@@ -213,6 +229,7 @@
 			children = (
 				4E2294847314AD00F6C1A794 /* MainTabView.swift */,
 				F9F69E39D522B21338930A6D /* Auth */,
+				8C90F989541DAB5990E050DD /* Dev */,
 				2522E2639B33742C2125A4AE /* Groups */,
 				08E9DB237CF4E6E1ABDB340D /* Settings */,
 			);
@@ -227,6 +244,14 @@
 			path = API;
 			sourceTree = "<group>";
 		};
+		8C90F989541DAB5990E050DD /* Dev */ = {
+			isa = PBXGroup;
+			children = (
+				56ECE053A1FF27F54B0ED9D6 /* DevUserSwitcher.swift */,
+			);
+			path = Dev;
+			sourceTree = "<group>";
+		};
 		A4361E1F4D65289F99882013 /* Auth */ = {
 			isa = PBXGroup;
 			children = (
@@ -239,7 +264,9 @@
 		A4A39C1E0497E543CD96D891 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				B8B4133B7C5F59DF63EB98FF /* DevUserStore.swift */,
 				3F56BC4458F2D1066E7AA867 /* GroupStore.swift */,
+				F8B9F07453C46F72812AC8EF /* InviteStore.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -297,6 +324,7 @@
 			isa = PBXGroup;
 			children = (
 				7399BE6DC2C97920BFD87768 /* Group.swift */,
+				DC2CDDC72E0CA40C38EA82EE /* PendingInvite.swift */,
 				6701CDD545949367EB411DEB /* SplitMode.swift */,
 				672F2ED9B528FA05406C2F88 /* API */,
 			);
@@ -317,6 +345,7 @@
 			isa = PBXGroup;
 			children = (
 				5B8A83344D05376026C8052A /* AuthEndpoint.swift */,
+				AF987FAE9E1E750E79B8EBB3 /* DevEndpoint.swift */,
 				80989602318F14FFFC5596F4 /* ExpensesEndpoint.swift */,
 				DE9D2A4B24A695ADA0E5AA2A /* GroupsEndpoint.swift */,
 				62957CEED4BC98D2192F6727 /* InvitesEndpoint.swift */,
@@ -451,6 +480,9 @@
 				08EB3DD167384918B3A4048D /* CreateGroupMembersStep.swift in Sources */,
 				F3E45C8BDBC87B4E375DF44C /* CreateGroupModel.swift in Sources */,
 				D0F7C810066532C07105FC1E /* CreateGroupSheet.swift in Sources */,
+				64EA807D2EC8A03A2D5CC439 /* DevEndpoint.swift in Sources */,
+				FD4478457588EC936A9EA5D2 /* DevUserStore.swift in Sources */,
+				6799E37CA1CF3D992E193293 /* DevUserSwitcher.swift in Sources */,
 				8510DD98703E40F3E0499D24 /* EditGroupScreen.swift in Sources */,
 				54D4E0E9D6CCFAB82D92A5BE /* ExpenseDetailScreen.swift in Sources */,
 				B3548571E0DC066D31644CB0 /* ExpenseDetailsStep.swift in Sources */,
@@ -464,6 +496,8 @@
 				B21522063EF6E318E9ACA30E /* GroupsEndpoint.swift in Sources */,
 				9E3325C90E8E68836497FAB4 /* GroupsListScreen.swift in Sources */,
 				C566F0729259CA9AF3B1F54A /* Helpers.swift in Sources */,
+				67605AC8AA1F6B12F40B87CE /* InviteComposerSheet.swift in Sources */,
+				30789B9A1560FA8F348E7D2A /* InviteStore.swift in Sources */,
 				86B883B2F06CF1B70FA5CAE2 /* InvitesEndpoint.swift in Sources */,
 				6FE8858A643955BCC71E7EF5 /* KeychainService.swift in Sources */,
 				11F8CD469D84ECB1F0BE8B4C /* MainTabView.swift in Sources */,
@@ -474,6 +508,8 @@
 				58D6CFBDC7F073B90ADB6A92 /* NameSetupScreen.swift in Sources */,
 				047A2CE3A2C4318F5AE847D0 /* OTPVerifyScreen.swift in Sources */,
 				9FFB14A80648590769C1EC2C /* PayerSelectionScreen.swift in Sources */,
+				FCB6AF828621C569AAD5E230 /* PendingInvite.swift in Sources */,
+				CDA8A0C9561E2C784EC20612 /* PendingInvitesCard.swift in Sources */,
 				71CD7B675906DCD306577983 /* PhoneEntryScreen.swift in Sources */,
 				A2C7FBE192841CC5308ECE3E /* ReknApp.swift in Sources */,
 				CD397FF935C2E2CEEB483E25 /* ReknTextField.swift in Sources */,

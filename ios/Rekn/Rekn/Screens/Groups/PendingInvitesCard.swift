@@ -1,141 +1,173 @@
 import SwiftUI
 
-struct PendingInvitesCard: View {
-    let invites: [PendingInvite]
-    let onAccept: (PendingInvite) -> Void
-    let onDecline: (PendingInvite) -> Void
+/// Section header for the pending-invites list. Renders inside the teal
+/// region of GroupsListScreen, above the stack of individual invite cards.
+struct PendingInvitesSectionHeader: View {
+    let count: Int
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            header
-            ForEach(Array(invites.enumerated()), id: \.element.id) { index, invite in
-                if index > 0 {
-                    Divider().padding(.leading, 16)
-                }
-                InviteRow(
-                    invite: invite,
-                    onAccept: { onAccept(invite) },
-                    onDecline: { onDecline(invite) }
-                )
-            }
-        }
-        .background(Color.brandSecondary.opacity(0.10))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(Color.brandSecondary.opacity(0.25), lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-    }
-
-    private var header: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             Image(systemName: "person.2.badge.plus")
-                .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(Color.brandSecondary)
             Text("Pending invites")
-                .font(.subheadline)
-                .fontWeight(.semibold)
-            Text("(\(invites.count))")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .fontWeight(.semibold)
+                .foregroundStyle(.white.opacity(0.85))
+            Text("(\(count))")
+                .font(.caption2)
+                .foregroundStyle(.white.opacity(0.6))
             Spacer()
         }
         .padding(.horizontal, 16)
-        .padding(.top, 12)
-        .padding(.bottom, 10)
+        .padding(.bottom, 6)
     }
 }
 
-private struct InviteRow: View {
+/// A single invite shown as a full-width card that matches `GroupCard`
+/// visual style (white `.cardStyle()` + soft shadow) with a lavender accent
+/// rail on the leading edge to signal it's an incoming action item.
+struct PendingInviteCard: View {
     let invite: PendingInvite
+    let isProcessing: Bool
     let onAccept: () -> Void
     let onDecline: () -> Void
 
     @State private var showingDeclineConfirm = false
-    @State private var isProcessing = false
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    private var useVerticalButtons: Bool {
+        dynamicTypeSize >= .accessibility1
+    }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            MemberAvatar(name: invite.inviterName, imageUrl: nil, size: 36)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(invite.groupName)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                Text("Invited by \(invite.inviterName) · \(invite.createdAt.relativeFormatted)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-
-            Spacer()
-
-            if isProcessing {
-                ProgressView().controlSize(.small)
-                    .padding(.trailing, 4)
-            } else {
-                VStack(spacing: 6) {
-                    Button(action: handleAccept) {
-                        Text("Accept")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .frame(minWidth: 64)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                    .tint(Color.brandSecondary)
-
-                    Button { showingDeclineConfirm = true } label: {
-                        Text("Decline")
-                            .font(.caption)
-                            .fontWeight(.medium)
-                            .frame(minWidth: 64)
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .tint(.secondary)
-                }
-            }
+        VStack(alignment: .leading, spacing: 12) {
+            identityRow
+            actionRow
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cardStyle()
+        .overlay(alignment: .leading) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(Color.brandSecondary)
+                .frame(width: 3)
+                .padding(.vertical, 10)
+                .padding(.leading, 1)
+        }
         .confirmationDialog(
             "Decline invite to \(invite.groupName)?",
             isPresented: $showingDeclineConfirm,
             titleVisibility: .visible
         ) {
-            Button("Decline", role: .destructive) { handleDecline() }
+            Button("Decline", role: .destructive) { onDecline() }
             Button("Cancel", role: .cancel) {}
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Invite to \(invite.groupName) from \(invite.inviterName)")
-        .accessibilityAction(named: "Accept") { handleAccept() }
+        .accessibilityLabel("Invite to \(invite.groupName) from \(invite.inviterName), \(invite.createdAt.relativeFormatted)")
+        .accessibilityAction(named: "Accept") { onAccept() }
         .accessibilityAction(named: "Decline") { showingDeclineConfirm = true }
     }
 
-    private func handleAccept() {
-        isProcessing = true
-        onAccept()
+    // MARK: - Subviews
+
+    private var identityRow: some View {
+        HStack(spacing: 12) {
+            MemberAvatar(name: invite.inviterName, imageUrl: nil, size: 36)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(invite.groupName)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                Text("Invited by \(invite.inviterName) · \(invite.createdAt.relativeFormatted)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
     }
 
-    private func handleDecline() {
-        isProcessing = true
-        onDecline()
+    @ViewBuilder
+    private var actionRow: some View {
+        if isProcessing {
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("Joining…")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .center)
+        } else if useVerticalButtons {
+            VStack(spacing: 8) {
+                acceptButton
+                declineButton
+            }
+        } else {
+            HStack(spacing: 10) {
+                declineButton
+                acceptButton
+            }
+        }
+    }
+
+    private var acceptButton: some View {
+        Button(action: onAccept) {
+            Text("Accept")
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .frame(maxWidth: .infinity, minHeight: 44)
+        }
+        .buttonStyle(.borderedProminent)
+        .controlSize(.large)
+        .tint(Color.brandSecondary)
+    }
+
+    private var declineButton: some View {
+        Button { showingDeclineConfirm = true } label: {
+            Text("Decline")
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, minHeight: 44)
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.large)
+        .tint(.secondary)
     }
 }
 
-#Preview("With invites") {
-    VStack {
-        PendingInvitesCard(
-            invites: PendingInvite.previews,
-            onAccept: { _ in },
-            onDecline: { _ in }
-        )
-        .padding()
-        Spacer()
+#Preview("Idle") {
+    VStack(spacing: 12) {
+        PendingInvitesSectionHeader(count: PendingInvite.previews.count)
+        ForEach(PendingInvite.previews) { invite in
+            PendingInviteCard(
+                invite: invite,
+                isProcessing: false,
+                onAccept: {},
+                onDecline: {}
+            )
+        }
     }
-    .background(Color(.systemGroupedBackground))
+    .padding(.horizontal, 16)
+    .padding(.top, 40)
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(Color.brandPrimary)
+}
+
+#Preview("Processing") {
+    VStack(spacing: 12) {
+        PendingInvitesSectionHeader(count: 1)
+        PendingInviteCard(
+            invite: PendingInvite.previews[0],
+            isProcessing: true,
+            onAccept: {},
+            onDecline: {}
+        )
+    }
+    .padding(.horizontal, 16)
+    .padding(.top, 40)
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(Color.brandPrimary)
 }

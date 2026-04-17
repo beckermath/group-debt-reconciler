@@ -140,9 +140,13 @@ struct GroupsListScreen: View {
     // MARK: - Invite Actions
 
     private func handleAccept(_ invite: PendingInvite) {
+        // Guard against double-tap while in flight.
+        guard !inviteStore.isProcessing(inviteId: invite.id) else { return }
         Task {
             do {
                 _ = try await inviteStore.accept(inviteId: invite.id)
+                // InviteStore.accept already reloaded pending invites from
+                // the server — refresh groups so the newly joined group shows.
                 await groupStore.loadGroups(forceReload: true)
             } catch let error as APIError {
                 inviteError = error.errorDescription ?? "Couldn't accept invite"
@@ -153,6 +157,7 @@ struct GroupsListScreen: View {
     }
 
     private func handleDecline(_ invite: PendingInvite) {
+        guard !inviteStore.isProcessing(inviteId: invite.id) else { return }
         Task {
             do {
                 try await inviteStore.decline(inviteId: invite.id)
@@ -184,12 +189,22 @@ struct GroupsListScreen: View {
             ScrollView {
                 VStack(spacing: 12) {
                     if showInvitesForCurrentUser, !pendingInvites.isEmpty {
-                        PendingInvitesCard(
-                            invites: pendingInvites,
-                            onAccept: handleAccept,
-                            onDecline: handleDecline
-                        )
-                        .transition(.opacity.combined(with: .move(edge: .top)))
+                        VStack(spacing: 10) {
+                            PendingInvitesSectionHeader(count: pendingInvites.count)
+                                .padding(.horizontal, -16) // header uses its own 16pt inset
+                            ForEach(pendingInvites) { invite in
+                                PendingInviteCard(
+                                    invite: invite,
+                                    isProcessing: inviteStore.isProcessing(inviteId: invite.id),
+                                    onAccept: { handleAccept(invite) },
+                                    onDecline: { handleDecline(invite) }
+                                )
+                                .transition(.asymmetric(
+                                    insertion: .opacity.combined(with: .move(edge: .top)),
+                                    removal: .opacity.combined(with: .scale(scale: 0.98))
+                                ))
+                            }
+                        }
                     }
                     ForEach(groups) { group in
                         NavigationLink(value: group.id) {

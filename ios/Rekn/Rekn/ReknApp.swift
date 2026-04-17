@@ -9,12 +9,19 @@ struct ReknApp: App {
 
     var body: some Scene {
         WindowGroup {
-            Group {
-                if authManager.isAuthenticated {
-                    MainTabView()
-                } else {
-                    PhoneEntryScreen()
+            ZStack(alignment: .bottomLeading) {
+                Group {
+                    if authManager.isAuthenticated {
+                        MainTabView()
+                    } else {
+                        PhoneEntryScreen()
+                    }
                 }
+                #if DEBUG
+                DevUserSwitcherPill()
+                    .padding(.leading, 12)
+                    .padding(.bottom, 8)
+                #endif
             }
             .environment(authManager)
             .environment(groupStore)
